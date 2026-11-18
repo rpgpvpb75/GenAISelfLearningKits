@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graph Data Structure Self-Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: fixed step rail on the left, one step view at a time on the right; graphs drawn live in SVG. */
+:root{
+  --bg:#F4F6F8; --panel:#FFFFFF; --ink:#16212E; --muted:#5B6878; --line:#D7DEE6;
+  --accent:#0B7A83; --accent-soft:#DDF0F1; --warm:#C26A12; --warm-soft:#FBEBD8;
+  --ok:#1E7B45; --ok-soft:#DCF1E3; --bad:#B3362B; --bad-soft:#F8DEDB;
+  --node:#16212E; --node-ink:#FFFFFF; --edge:#8796A8;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F151C; --panel:#17202A; --ink:#E6ECF2; --muted:#9AA8B8; --line:#2A3644;
+    --accent:#3FB8C1; --accent-soft:#16363A; --warm:#F0A04B; --warm-soft:#3A2A17;
+    --ok:#5CCB86; --ok-soft:#173526; --bad:#F07F73; --bad-soft:#3D1F1C;
+    --node:#E6ECF2; --node-ink:#0F151C; --edge:#6E7E91; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F151C; --panel:#17202A; --ink:#E6ECF2; --muted:#9AA8B8; --line:#2A3644;
+  --accent:#3FB8C1; --accent-soft:#16363A; --warm:#F0A04B; --warm-soft:#3A2A17;
+  --ok:#5CCB86; --ok-soft:#173526; --bad:#F07F73; --bad-soft:#3D1F1C;
+  --node:#E6ECF2; --node-ink:#0F151C; --edge:#6E7E91; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:30px} h2{font-size:24px} h3{font-size:16px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100%}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
+nav .brand{font-family:var(--display);font-size:17px;font-weight:700;padding:0 8px 14px}
+nav .brand small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14px}
+nav a:hover{background:var(--bg)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:11px;font-family:var(--mono);flex:none}
+nav .dot.done{background:var(--ok);border-color:var(--ok);color:#fff}
+nav .dot.part{border-color:var(--warm);color:var(--warm)}
+nav .meter{margin:16px 8px 0;font-size:12px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+main{padding:28px clamp(16px,4vw,48px) 60px;max-width:1080px}
+section.view{display:none;flex-direction:column;gap:18px}
+section.view.on{display:flex}
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.kq{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;padding:12px 16px;font-style:italic}
+.kq b{font-style:normal;display:block;font-size:12px;font-family:var(--mono);color:var(--accent);margin-bottom:2px;text-transform:uppercase}
+.kcheck{border-left:4px solid var(--bad);background:var(--bad-soft);border-radius:0 10px 10px 0;padding:12px 16px}
+.kcheck b{color:var(--bad)}
+.terms{display:grid;gap:8px;margin:0;padding:0;list-style:none;max-width:72ch}
+.terms li{padding-left:16px;position:relative}
+.terms li::before{content:"";position:absolute;left:0;top:.65em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.term{font-weight:600}
+.lab{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:start}
+.lab svg{width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--line);display:block}
+.readout{display:flex;flex-direction:column;gap:10px}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:8px;background:var(--bg);font-size:14px}
+.stat b{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.stat.hl{background:var(--accent-soft)} .stat.hl b{color:var(--accent)}
+.hint-line{font-size:13px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:7px 14px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=number],input[type=text],select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;width:100%}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.qs{display:flex;flex-direction:column;gap:12px}
+.q{border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:10px;background:var(--panel)}
+.q.ok{border-color:var(--ok);background:var(--ok-soft)}
+.q.bad{border-color:var(--bad);background:var(--bad-soft)}
+.q.part{border-color:var(--warm);background:var(--warm-soft)}
+.q .p{font-weight:500}
+.q .p span{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.q .ans{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.q .ans input{width:120px}
+.choice{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer}
+.choice.sel{border-color:var(--ink);font-weight:600}
+.fb{font-size:14px;display:grid;gap:4px}
+.fb b{margin-right:6px} .fb b.g{color:var(--ok)} .fb b.r{color:var(--bad)}
+.why{font-size:13px;font-weight:600;color:var(--muted)}
+.q textarea{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;width:100%;resize:vertical;font:inherit;color:inherit}
+.fb b{margin-right:6px}
+
+.next{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.progress-table td:last-child{width:130px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.pill.done{background:var(--ok-soft);color:var(--ok)}
+.pill.part{background:var(--warm-soft);color:var(--warm)}
+.pill.none{background:var(--bg);color:var(--muted)}
+.callout{font-family:var(--display);font-size:19px;color:var(--accent)}
+.tri{display:flex;gap:4px;align-items:flex-end;height:120px;padding-top:6px}
+.tri div{flex:1;background:var(--line);border-radius:4px 4px 0 0;position:relative;min-width:0}
+.tri div.cur{background:var(--accent)}
+.tri div span{position:absolute;top:-18px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.tri-x{display:flex;gap:4px;font-family:var(--mono);font-size:11px;color:var(--muted)} .tri-x span{flex:1;text-align:center}
+/* svg */
+.e{stroke:var(--edge);stroke-width:2;fill:none}
+.e.hot{stroke:var(--accent);stroke-width:3.5}
+.e.warm{stroke:var(--warm);stroke-width:3.5}
+.e.dim{opacity:.35}
+.n circle{fill:var(--node);stroke:var(--panel);stroke-width:3}
+.n text{fill:var(--node-ink);font-family:var(--mono);font-size:14px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.n.click{cursor:pointer}
+.n.sel circle{fill:var(--accent)}
+.n.src circle{fill:var(--warm)}
+.wl{font-family:var(--mono);font-size:12px;fill:var(--ink);paint-order:stroke;stroke:var(--bg);stroke-width:4px;text-anchor:middle;dominant-baseline:central}
+.ah{fill:var(--edge)} .ah-hot{fill:var(--accent)} .ah-warm{fill:var(--warm)}
+.matrix td{text-align:center;font-family:var(--mono);padding:4px 6px;min-width:30px}
+.matrix td.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.matrix th{text-align:center}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}
+  nav .brand,nav .meter{width:100%}
+  .lab{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<nav id="nav">
+  <div class="brand">Graph Data Structure<small>Self-guide built from your learning kernel</small></div>
+  <a href="#start" data-v="start"><span class="dot">⌂</span>Start here</a>
+  <a href="#kernel" data-v="kernel"><span class="dot">K</span>Kernel &amp; checks</a>
+  <a href="#step-1" data-v="step-1"><span class="dot" id="d1">1</span>Nodes &amp; edges</a>
+  <a href="#step-2" data-v="step-2"><span class="dot" id="d2">2</span>Direction</a>
+  <a href="#step-3" data-v="step-3"><span class="dot" id="d3">3</span>Edge count</a>
+  <a href="#step-4" data-v="step-4"><span class="dot" id="d4">4</span>Weighted multi-edges</a>
+  <a href="#playground" data-v="playground"><span class="dot">✎</span>Playground</a>
+  <div class="meter"><span id="navmeter">0 of 14 complete</span><div class="bar"><i id="navbar" style="width:0%"></i></div></div>
+</nav>
+<main>
+
+<!-- START -->
+<section class="view" id="v-start">
+  <div class="eyebrow">Self-guided tool</div>
+  <h1>Learn graphs in four steps</h1>
+  <p style="max-width:68ch;margin:0">Each step takes one statement from your learning kernel, explains it, gives you a live graph to play with, then checks your understanding. Every question asks for your answer and a short explanation of why. Both are checked: a wrong answer gets a hint, and reasoning that misses a key idea is told which idea to add.</p>
+  <div class="card">
+    <h3 style="margin-bottom:10px">Your progress</h3>
+    <div class="scroll"><table class="progress-table">
+      <thead><tr><th>Step</th><th class="num">Questions</th><th class="num">Answer + reasoning</th><th>Status</th></tr></thead>
+      <tbody id="ptable"></tbody>
+      <tfoot><tr><th>Overall</th><th class="num" id="ptot">14</th><th class="num" id="pcor">0</th><th id="ppct">0%</th></tr></tfoot>
+    </table></div>
+    <p class="callout" id="nextcall" style="margin:14px 0 0"></p>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--accent)"></i>Live: click or drag it</span>
+    <span><i style="background:var(--ok)"></i>Answer and reasoning both pass</span>
+    <span><i style="background:var(--bad)"></i>Not yet, with a hint</span>
+    <span><i style="background:var(--bad-soft);border:1px solid var(--bad)"></i>Kernel check: where the kernel needs a correction</span>
+  </div>
+  <div class="row"><a class="btn primary" href="#step-1" style="text-decoration:none">Begin with step 1</a><button class="btn" id="reset">Clear my answers</button></div>
+</section>
+
+<!-- KERNEL -->
+<section class="view" id="v-kernel">
+  <div class="eyebrow">Source</div>
+  <h2>The learning kernel and its checks</h2>
+  <p style="margin:0;max-width:68ch">These are the four statements in LearningKernel.xlsx, in order. Each one becomes a step. Where a statement needs a qualifier or conflicts with another, the check says so and the step teaches the corrected version.</p>
+  <div class="card scroll"><table>
+    <thead><tr><th>#</th><th>Kernel statement</th><th>Check</th></tr></thead>
+    <tbody id="ktable"></tbody>
+  </table></div>
+</section>
+
+<!-- STEP 1 -->
+<section class="view" id="v-step-1">
+  <div class="eyebrow">Step 1 of 4</div>
+  <h2>Nodes and edges</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="0"></span></div>
+  <ul class="terms">
+    <li>A <span class="term">node</span> (or vertex) is a point that stands for a thing: a city, a person, a web page.</li>
+    <li>An <span class="term">edge</span> joins two nodes and stands for a relationship between them: a road, a friendship, a link.</li>
+    <li>The <span class="term">degree</span> of a node is the number of edges that touch it.</li>
+  </ul>
+  <div class="card lab">
+    <svg id="g1" viewBox="0 0 420 300" role="img" aria-label="Graph with nodes A, B, C, D"></svg>
+    <div class="readout">
+      <h3>Click any node</h3>
+      <div class="stat"><span>Nodes</span><b>4</b></div>
+      <div class="stat"><span>Edges</span><b>4</b></div>
+      <div class="stat hl"><span id="g1lab">Degree of A</span><b id="g1deg">2</b></div>
+      <p class="hint-line" id="g1edges">Edges touching A: A–B, A–C</p>
+    </div>
+  </div>
+  <div class="qs" data-step="1"></div>
+  <div class="next"><a class="btn" href="#kernel">Back</a><a class="btn primary" href="#step-2">Next: direction</a></div>
+</section>
+
+<!-- STEP 2 -->
+<section class="view" id="v-step-2">
+  <div class="eyebrow">Step 2 of 4</div>
+  <h2>Direction: is A–B the same as B–A?</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="1"></span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="1"></span></div>
+  <ul class="terms">
+    <li>In an <span class="term">undirected</span> graph an edge has no direction. A–B and B–A are the same edge, like a friendship.</li>
+    <li>In a <span class="term">directed</span> graph each edge points one way. A→B and B→A are two edges, like following someone.</li>
+    <li>Directed edges can carry different weights each way: uphill A→B takes 20 minutes, downhill B→A takes 12.</li>
+  </ul>
+  <div class="card lab">
+    <svg id="g2" viewBox="0 0 420 260" role="img" aria-label="Two nodes A and B"></svg>
+    <div class="readout">
+      <div class="seg" role="group" aria-label="Graph type"><button id="g2u" class="on">Undirected</button><button id="g2d">Directed</button></div>
+      <div class="stat hl"><span>Edges between A and B</span><b id="g2n">1</b></div>
+      <div class="stat"><span>Written as</span><b id="g2w">{A, B}</b></div>
+      <div class="stat"><span>Max edges for 4 nodes</span><b id="g2m">6</b></div>
+      <p class="hint-line" id="g2h">One edge, usable both ways.</p>
+    </div>
+  </div>
+  <div class="qs" data-step="2"></div>
+  <div class="next"><a class="btn" href="#step-1">Back</a><a class="btn primary" href="#step-3">Next: edge count</a></div>
+</section>
+
+<!-- STEP 3 -->
+<section class="view" id="v-step-3">
+  <div class="eyebrow">Step 3 of 4</div>
+  <h2>How many edges can K nodes have?</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="2"></span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="2"></span></div>
+  <ul class="terms">
+    <li>When every node joins every other node the graph is <span class="term">complete</span>. That is the most edges a simple graph can have.</li>
+    <li>Each new node joins all the nodes already there, so totals grow 1, 3, 6, 10, 15: the <span class="term">triangular numbers</span>.</li>
+    <li>Undirected maximum is K(K−1)/2. Directed maximum is K(K−1). The fewest edges that keep K nodes connected is K−1, a <span class="term">tree</span>.</li>
+  </ul>
+  <div class="card lab">
+    <svg id="g3" viewBox="0 0 360 340" role="img" aria-label="Complete graph"></svg>
+    <div class="readout">
+      <label for="kslider"><h3>Nodes K = <span id="kval">5</span></h3></label>
+      <input type="range" id="kslider" min="1" max="10" value="5">
+      <div class="stat hl"><span>Undirected max · K(K−1)/2</span><b id="k1">10</b></div>
+      <div class="stat"><span>Directed max · K(K−1)</span><b id="k2">20</b></div>
+      <div class="stat"><span>Fewest to stay connected · K−1</span><b id="k3">4</b></div>
+      <div class="stat"><span style="color:var(--warm)">Edges the newest node added</span><b id="k4">4</b></div>
+      <div class="tri" id="tri" aria-hidden="true"></div>
+      <div class="tri-x" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+    </div>
+  </div>
+  <div class="qs" data-step="3"></div>
+  <div class="next"><a class="btn" href="#step-2">Back</a><a class="btn primary" href="#step-4">Next: weighted multi-edges</a></div>
+</section>
+
+<!-- STEP 4 -->
+<section class="view" id="v-step-4">
+  <div class="eyebrow">Step 4 of 4</div>
+  <h2>Many weighted edges between the same nodes</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="3"></span></div>
+  <div class="kcheck" style="border-color:var(--ok);background:var(--ok-soft)"><b style="color:var(--ok)">Kernel check.</b> <span class="kc" data-k="3"></span></div>
+  <ul class="terms">
+    <li>A <span class="term">weight</span> is a number on an edge: distance, time, cost or capacity.</li>
+    <li><span class="term">Parallel edges</span> join the same two nodes. A graph that allows them is a <span class="term">multigraph</span>, and then K(K−1)/2 no longer limits the edge count.</li>
+    <li>Shortest paths keep only the lightest parallel edge. Flow problems add capacities together. Counting routes keeps every edge.</li>
+  </ul>
+  <div class="card lab">
+    <svg id="g4" viewBox="0 0 440 260" role="img" aria-label="Multigraph A, B, C"></svg>
+    <div class="readout">
+      <h3>Inspect a pair</h3>
+      <div class="row"><select id="pf" aria-label="From node" style="width:auto"><option>A</option><option>B</option><option>C</option></select><span>and</span><select id="pt" aria-label="To node" style="width:auto"><option>A</option><option selected>B</option><option>C</option></select></div>
+      <div class="stat"><span>Parallel edges</span><b id="p1">3</b></div>
+      <div class="stat hl"><span>Lightest: keep for shortest path</span><b id="p2">1</b></div>
+      <div class="stat"><span>Heaviest</span><b id="p3">7</b></div>
+      <div class="stat"><span>Sum: merged capacity for flow</span><b id="p4">13</b></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Edge list · edit the weights (hours)</h3><button class="btn" id="e4reset">Restore defaults</button></div>
+    <div class="scroll"><table id="e4"><thead><tr><th>From</th><th>To</th><th>Mode</th><th class="num">Weight</th></tr></thead><tbody></tbody></table></div>
+    <p class="hint-line" style="margin:8px 0 0">The questions below use the default weights.</p>
+  </div>
+  <div class="qs" data-step="4"></div>
+  <div class="next"><a class="btn" href="#step-3">Back</a><a class="btn primary" href="#playground">Next: playground</a></div>
+</section>
+
+<!-- PLAYGROUND -->
+<section class="view" id="v-playground">
+  <div class="eyebrow">Free play</div>
+  <h2>Build your own graph</h2>
+  <p style="margin:0;max-width:70ch">Click empty space to add a node. Click one node, then another, to join them with an edge carrying the weight below. Click a node twice for a self-loop. Every number on the right updates as you build.</p>
+  <div class="card lab">
+    <svg id="g5" viewBox="0 0 480 360" role="img" aria-label="Your graph" style="cursor:crosshair"></svg>
+    <div class="readout">
+      <div class="seg" role="group" aria-label="Graph type"><button id="pu" class="on">Undirected</button><button id="pd">Directed</button></div>
+      <div class="row"><label for="pw" style="white-space:nowrap">Next edge weight</label><input type="number" id="pw" value="1" style="width:90px"></div>
+      <div class="row"><button class="btn" id="pundo">Undo</button><button class="btn" id="pclear">Clear</button><button class="btn" id="pex">Load example</button></div>
+      <div class="stat"><span>Nodes</span><b id="s1">0</b></div>
+      <div class="stat"><span>Edges</span><b id="s2">0</b></div>
+      <div class="stat"><span>Max for a simple graph</span><b id="s3">0</b></div>
+      <div class="stat hl"><span>Density</span><b id="s4">–</b></div>
+      <div class="stat"><span>Kind</span><b id="s5">–</b></div>
+      <div class="stat"><span>Total weight</span><b id="s6">0</b></div>
+      <p class="hint-line" id="pmsg">Click empty space to place node A.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:8px">Degrees and adjacency matrix</h3>
+    <div class="scroll" id="pmat"></div>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+const SVGNS="http://www.w3.org/2000/svg";
+const KERNEL=[
+ "In graph data structure the smallest unit of learning is node which is a point and join between 2 nodes called edges",
+ "Lets say A and B are 2 nodes then A-B and B-A are considered 2 edges",
+ "Considering (K) nodes there would be K(k-1)/2 edges",
+ "Then there could be multiple edges between the same set of nodes with each edge representing a different weight"
+];
+const CHECKS=[
+ "Accurate. Nodes are also called vertices, and a graph is written G = (V, E).",
+ "True only for a directed graph. In an undirected graph, A–B and B–A are one edge.",
+ "This is the maximum, and only for an undirected simple graph (no self-loops, no parallel edges). It conflicts with statement 2: if A–B and B–A were two edges, the maximum would be K(K−1).",
+ "Accurate. This is a weighted multigraph; once parallel edges are allowed there is no upper limit on the edge count."
+];
+const STEPNAMES=["Nodes & edges","Direction","Edge count","Weighted multi-edges"];
+const BANK=/*QBANK*/{"min_words": 4, "steps": {"1": [{"p": "How many nodes does the example graph have?", "a": 4, "h": "Count the circles.", "w": "A, B, C and D: four nodes.", "need": 2, "ideas": [{"label": "what you counted (the points or letters)", "terms": ["count", "circle", "point", "letter", "node", "vertex", "vertices", "a, b, c", "a b c d", "abcd", "a,b,c,d"]}, {"label": "the total, four", "terms": ["4", "four"]}]}, {"p": "How many edges does it have?", "a": 4, "h": "Count the lines.", "w": "A–B, B–C, C–D and A–C: four edges.", "need": 2, "ideas": [{"label": "what an edge is (a line or connection)", "terms": ["line", "edge", "connect", "join", "link", "a-b", "b-c", "c-d", "a-c"]}, {"label": "the total, four", "terms": ["4", "four"]}]}, {"p": "Which node has the highest degree?", "a": "C", "o": ["A", "B", "C", "D"], "h": "Compare how many edges touch each node.", "w": "C touches B, D and A: degree 3.", "need": 2, "ideas": [{"label": "degree means the edges touching a node", "terms": ["degree", "touch", "connect", "edges", "lines", "neighbour", "neighbor", "linked", "joined"]}, {"label": "C has three", "terms": ["3", "three"]}]}], "2": [{"p": "In an undirected graph, are A–B and B–A the same edge?", "a": "Yes", "o": ["Yes", "No"], "h": "Undirected edges have no arrow.", "w": "Yes. One undirected edge joins A and B both ways.", "need": 1, "ideas": [{"label": "undirected edges have no direction (they work both ways)", "terms": ["direction", "arrow", "both way", "two-way", "two way", "either way", "symmetric", "same edge", "one edge", "single edge", "order does not", "order doesn't"]}]}, {"p": "Maximum edges in a directed graph with 4 nodes and no self-loops?", "a": 12, "h": "Each node can point to each of the other 3.", "w": "4 × 3 = 12 directed edges.", "need": 2, "ideas": [{"label": "each node points to every other node", "terms": ["each", "every", "other", "all", "3", "three"]}, {"label": "the calculation 4 × 3", "terms": ["4x3", "4 x 3", "12", "twelve", "k(k-1)", "n(n-1)"]}]}, {"p": "A→B takes 20 minutes and B→A takes 12. Which graph models this best?", "a": "Directed weighted", "o": ["Undirected", "Undirected weighted", "Directed weighted"], "h": "The two directions carry different values.", "w": "Different values each way need both direction and weights.", "need": 2, "ideas": [{"label": "the two directions differ", "terms": ["direction", "one way", "each way", "arrow", "a->b", "directed", "both way", "opposite"]}, {"label": "the values are weights (time or cost)", "terms": ["weight", "time", "minute", "cost", "value", "different", "20", "12"]}]}], "3": [{"p": "Maximum edges in an undirected simple graph with 6 nodes?", "a": 15, "h": "6 × 5 ÷ 2. Try the calculator.", "w": "6 × 5 / 2 = 15.", "need": 2, "ideas": [{"label": "the formula K(K−1)/2 or 6 × 5 halved", "terms": ["k(k-1)/2", "n(n-1)/2", "6x5", "6 x 5", "30", "halve", "half", "divide", "/2", "pair"]}, {"label": "the result, 15", "terms": ["15", "fifteen"]}]}, {"p": "Maximum edges in an undirected simple graph with 10 nodes?", "a": 45, "h": "10 × 9 ÷ 2.", "w": "10 × 9 / 2 = 45.", "need": 2, "ideas": [{"label": "the formula K(K−1)/2 or 10 × 9 halved", "terms": ["k(k-1)/2", "n(n-1)/2", "10x9", "10 x 9", "90", "halve", "half", "divide", "/2", "pair"]}, {"label": "the result, 45", "terms": ["45", "forty"]}]}, {"p": "Maximum edges in a directed graph with 5 nodes?", "a": 20, "h": "Directed: don't halve.", "w": "5 × 4 = 20.", "need": 2, "ideas": [{"label": "directed edges are not halved (each direction counts)", "terms": ["direct", "not halve", "no halving", "don't halve", "dont halve", "not divide", "each direction", "both direction", "twice", "k(k-1)", "n(n-1)", "a->b"]}, {"label": "the calculation 5 × 4", "terms": ["5x4", "5 x 4", "20", "twenty"]}]}, {"p": "How many new edges does the 7th node add to a complete graph?", "a": 6, "h": "It joins every node already there. Watch the newest node's edges at K = 7.", "w": "It joins the 6 existing nodes: 21 − 15 = 6.", "need": 2, "ideas": [{"label": "the new node joins every existing node", "terms": ["existing", "already", "previous", "every", "each", "all", "other"]}, {"label": "there are six of them (or 21 − 15)", "terms": ["6", "six", "21", "15", "k-1", "n-1"]}]}], "4": [{"p": "How many parallel edges join A and B?", "a": 3, "h": "Inspect the pair A and B.", "w": "Flight, train and bus: three parallel edges.", "need": 2, "ideas": [{"label": "which edges they are (flight, train, bus)", "terms": ["flight", "train", "bus"]}, {"label": "they join the same pair of nodes", "terms": ["parallel", "same pair", "same two", "same node", "between a and b", "a and b", "multiple", "three", "3"]}]}, {"p": "For the fastest route from A to B, which edge do you keep?", "a": "Flight", "o": ["Flight", "Train", "Bus"], "h": "Shortest path keeps the lightest edge.", "w": "The flight has the lowest weight, 1 hour.", "need": 2, "ideas": [{"label": "you keep the lightest edge", "terms": ["lightest", "lowest", "least", "smallest", "minimum", "shortest", "fastest", "quickest", "less"]}, {"label": "its weight (1 hour)", "terms": ["weight", "time", "hour", "1h", "1 h", "cost"]}]}, {"p": "Is this graph a simple graph?", "a": "No", "o": ["Yes", "No"], "h": "Simple graphs forbid parallel edges.", "w": "It has parallel edges, so it is a multigraph.", "need": 2, "ideas": [{"label": "it has parallel edges", "terms": ["parallel", "multiple", "more than one", "same pair", "same two", "several"]}, {"label": "simple graphs don't allow them (it's a multigraph)", "terms": ["simple", "not allow", "forbid", "multigraph", "only one", "at most one"]}]}, {"p": "If the A–B weights were capacities, what single capacity do they merge into?", "a": 13, "h": "Flow adds parallel capacities.", "w": "1 + 5 + 7 = 13.", "need": 2, "ideas": [{"label": "capacities are added together", "terms": ["add", "sum", "total", "combine", "merge", "+", "plus"]}, {"label": "the result 1 + 5 + 7 = 13", "terms": ["13", "thirteen", "1+5+7", "1 + 5 + 7"]}]}]}}/*END*/;
+const Q=BANK.steps, MINW=BANK.min_words||4;
+const TOTAL=Object.values(Q).reduce((s,a)=>s+a.length,0);
+let state={};
+try{state=JSON.parse(localStorage.getItem("graph-selfguide-v2")||"{}")||{}}catch(e){state={}}
+function save(){try{localStorage.setItem("graph-selfguide-v2",JSON.stringify(state))}catch(e){}}
+
+/* ---------- kernel text ---------- */
+document.querySelectorAll(".kt").forEach(el=>el.textContent="“"+KERNEL[+el.dataset.k]+"”");
+document.querySelectorAll(".kc").forEach(el=>el.textContent=CHECKS[+el.dataset.k]);
+const kt=document.getElementById("ktable");
+KERNEL.forEach((s,i)=>{const tr=document.createElement("tr");
+ tr.innerHTML=`<td>${i+1}</td><td>${s}</td><td>${CHECKS[i]} <a href="#step-${i+1}">Step ${i+1}</a></td>`;kt.appendChild(tr)});
+
+/* ---------- questions ---------- */
+function norm(v){return String(v).trim().toLowerCase()}
+function nz(s){return String(s).toLowerCase().replace(/[×*]/g,"x").replace(/[−–—]/g,"-").replace(/→/g,"->").replace(/\b(times|multiplied by|into)\b/g," x ").replace(/\s+/g," ").trim()}
+function hasTerm(text,t){const T=nz(t);if(/^[a-z0-9]{1,3}$/.test(T))return new RegExp("(^|[^a-z0-9])"+T+"($|[^a-z0-9])").test(text);
+ return text.includes(T)||text.replace(/ /g,"").includes(T.replace(/ /g,""))}
+/* reasoning check: enough words, and enough of the rubric's key ideas mentioned */
+function judge(q,raw){const text=nz(raw||"");const words=text.split(" ").filter(Boolean).length;
+ if(!text)return{ok:false,msg:"Add a sentence explaining why."};
+ if(words<MINW)return{ok:false,msg:`Too short: explain in at least ${MINW} words.`};
+ const hit=q.ideas.filter(i=>i.terms.some(t=>hasTerm(text,t))),miss=q.ideas.filter(i=>!hit.includes(i));
+ const ok=hit.length>=(q.need||q.ideas.length);
+ return{ok,hit:hit.map(i=>i.label),msg:ok?("Accepted. You covered "+hit.map(i=>i.label).join(" and ")+"."):("Needs work. Also explain "+miss.map(i=>i.label).join(", and ")+".")}}
+function renderQs(){
+ document.querySelectorAll(".qs").forEach(box=>{
+  const s=box.dataset.step; box.innerHTML="<h3>Check yourself</h3><p class='hint-line' style='margin:0'>Answer, then say why in your own words. A question counts when both the answer and the reasoning pass.</p>";
+  Q[s].forEach((q,i)=>{
+   const id=s+"."+(i+1), st=state[id]||{}, k=id.replace(".","_");
+   const checked=st.checked;
+   const full=checked&&st.ok&&st.rok;
+   const d=document.createElement("div"); d.className="q"+(checked?(full?" ok":(st.ok||st.rok)?" part":" bad"):"");
+   let ans=q.o?q.o.map(o=>`<button class="choice${st.v===o?" sel":""}" data-v="${o}" aria-pressed="${st.v===o}">${o}</button>`).join("")
+             :`<input type="number" id="in${k}" aria-label="Your answer to Q${i+1}" value="${st.v!=null?st.v:""}">`;
+   d.innerHTML=`<div class="p"><span>Q${i+1}</span>${q.p}</div><div class="ans">${ans}</div>
+    <label class="why" for="why${k}">Why? Justify your answer</label>
+    <textarea id="why${k}" rows="2" placeholder="e.g. Because …">${st.r?st.r.replace(/</g,"&lt;"):""}</textarea>
+    <div class="row"><button class="btn primary chk">Check answer and reasoning</button></div>
+    <div class="fb"></div>`;
+   const fb=d.querySelector(".fb");
+   if(checked){
+    fb.innerHTML=`<div><b class="${st.ok?"g":"r"}">${st.ok?"Answer correct.":"Answer not yet."}</b>${st.ok?q.w:"Hint: "+q.h}</div>
+     <div><b class="${st.rok?"g":"r"}">${st.rok?"Reasoning accepted.":"Reasoning needs work."}</b>${st.rmsg.replace(/^(Accepted|Needs work)\. /,"")}</div>`}
+   const ta=d.querySelector("textarea");
+   if(q.o){d.querySelectorAll(".choice").forEach(b=>b.onclick=()=>{state[id]=Object.assign({},state[id],{v:b.dataset.v,r:ta.value,checked:false});save();renderQs();refresh();
+     const t=document.getElementById("why"+k);if(t)t.focus()})}
+   d.querySelector(".chk").onclick=()=>{
+    const v=q.o?(state[id]||{}).v:d.querySelector("input").value;
+    if(v==null||v===""){fb.innerHTML='<div><b class="r">Pick or type an answer first.</b></div>';return}
+    const j=judge(q,ta.value);
+    state[id]={v:v,ok:norm(v)===norm(q.a),r:ta.value,rok:j.ok,rmsg:j.msg,checked:true};save();renderQs();refresh()};
+   box.appendChild(d);
+  });
+  const c=countStep(s); const p=document.createElement("p"); p.className="hint-line";
+  p.textContent=`${c} of ${Q[s].length} complete (answer and reasoning)`+(c===Q[s].length?". Step complete.":"");
+  box.appendChild(p);
+ });
+}
+function countStep(s){return Q[s].filter((q,i)=>{const t=state[s+"."+(i+1)];return t&&t.checked&&t.ok&&t.rok}).length}
+function refresh(){
+ let tot=0;const tb=document.getElementById("ptable");tb.innerHTML="";
+ let next=null;
+ [1,2,3,4].forEach(s=>{const c=countStep(s),n=Q[s].length;tot+=c;
+  const status=c===n?"done":c>0?"part":"none";
+  if(c<n&&!next)next=s;
+  const dot=document.getElementById("d"+s);dot.className="dot"+(status==="done"?" done":status==="part"?" part":"");
+  dot.textContent=status==="done"?"✓":s;
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td><a href="#step-${s}">${s}. ${STEPNAMES[s-1]}</a></td><td class="num">${n}</td><td class="num">${c}</td><td><span class="pill ${status}">${status==="done"?"Done":status==="part"?"In progress":"Not started"}</span></td>`;
+  tb.appendChild(tr)});
+ document.getElementById("pcor").textContent=tot;
+ document.getElementById("ptot").textContent=TOTAL;
+ const pct=Math.round(tot/TOTAL*100);
+ document.getElementById("ppct").textContent=pct+"%";
+ document.getElementById("navmeter").textContent=`${tot} of ${TOTAL} complete`;
+ document.getElementById("navbar").style.width=pct+"%";
+ document.getElementById("nextcall").textContent=next?`Next: step ${next}, ${STEPNAMES[next-1].toLowerCase()}`:"All steps done. Open the playground and build your own graph.";
+}
+document.getElementById("reset").onclick=()=>{state={};save();renderQs();refresh()};
+
+/* ---------- graph drawing ---------- */
+function el(t,a,p){const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+function defs(svg){const d=el("defs",{},svg);
+ [["ah","ah"],["ah-hot","ah-hot"],["ah-warm","ah-warm"]].forEach(([id,c])=>{
+  const m=el("marker",{id:svg.id+id,viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto-start-reverse"},d);
+  el("path",{d:"M0,0 L10,5 L0,10 z",class:c},m)});}
+/* edges: {u,v,w?,cls?,dir?}; nodes: {id:{x,y}} */
+function draw(svg,nodes,edges,opt){
+ opt=opt||{};svg.innerHTML="";defs(svg);const R=opt.r||18;
+ const groups={};edges.forEach((e,i)=>{const k=[e.u,e.v].sort().join("|");(groups[k]=groups[k]||[]).push(i)});
+ const eg=el("g",{},svg),lg=el("g",{},svg);
+ edges.forEach((e,i)=>{
+  const a=nodes[e.u],b=nodes[e.v];if(!a||!b)return;
+  const cls="e"+(e.cls?" "+e.cls:"");
+  if(e.u===e.v){ // self loop
+   const p=el("path",{d:`M${a.x-8},${a.y-R+2} C${a.x-34},${a.y-R-46} ${a.x+34},${a.y-R-46} ${a.x+8},${a.y-R+2}`,class:cls},eg);
+   if(e.dir)p.setAttribute("marker-end",`url(#${svg.id}${e.cls==="hot"?"ah-hot":e.cls==="warm"?"ah-warm":"ah"})`);
+   if(e.w!=null)el("text",{x:a.x,y:a.y-R-38,class:"wl"},lg).textContent=e.w;
+   return}
+  const k=[e.u,e.v].sort().join("|"),g=groups[k],n=g.length,idx=g.indexOf(i);
+  const [p0,p1]=e.u<e.v?[a,b]:[b,a];
+  const dx=p1.x-p0.x,dy=p1.y-p0.y,L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L;
+  const off=(idx-(n-1)/2)*(opt.spread||40);
+  const mx=(a.x+b.x)/2+nx*off,my=(a.y+b.y)/2+ny*off;
+  const sh=(P,C,d)=>{const vx=C.x-P.x,vy=C.y-P.y,l=Math.hypot(vx,vy)||1;return{x:P.x+vx/l*d,y:P.y+vy/l*d}};
+  const C={x:mx,y:my},s=sh(a,C,R+2),t=sh(b,C,R+(e.dir?4:2));
+  const p=el("path",{d:`M${s.x},${s.y} Q${mx},${my} ${t.x},${t.y}`,class:cls},eg);
+  if(e.dir)p.setAttribute("marker-end",`url(#${svg.id}${e.cls&&e.cls.includes("hot")?"ah-hot":e.cls&&e.cls.includes("warm")?"ah-warm":"ah"})`);
+  if(e.w!=null){const lx=.25*s.x+.5*mx+.25*t.x,ly=.25*s.y+.5*my+.25*t.y;el("text",{x:lx,y:ly,class:"wl"},lg).textContent=e.w}
+ });
+ const ng=el("g",{},svg);
+ Object.entries(nodes).forEach(([id,p])=>{
+  const g=el("g",{class:"n"+(opt.click?" click":"")+(opt.sel===id?" sel":"")+(opt.src===id?" src":""),transform:`translate(${p.x},${p.y})`,tabindex:opt.click?"0":"-1"},ng);
+  el("circle",{r:R},g);el("text",{},g).textContent=id;
+  if(opt.click){g.addEventListener("click",ev=>{ev.stopPropagation();opt.click(id)});
+   g.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();opt.click(id)}})}
+ });
+}
+
+/* step 1 */
+const N1={A:{x:90,y:80},B:{x:320,y:70},C:{x:200,y:200},D:{x:350,y:240}};
+const E1=[["A","B"],["B","C"],["C","D"],["A","C"]];
+function s1(sel){
+ const es=E1.map(([u,v])=>({u,v,cls:(u===sel||v===sel)?"hot":""}));
+ draw(document.getElementById("g1"),N1,es,{click:s1,sel});
+ const touch=E1.filter(([u,v])=>u===sel||v===sel);
+ document.getElementById("g1lab").textContent="Degree of "+sel;
+ document.getElementById("g1deg").textContent=touch.length;
+ document.getElementById("g1edges").textContent=`Edges touching ${sel}: `+touch.map(e=>e.join("–")).join(", ");
+}
+s1("A");
+
+/* step 2 */
+let dir2=false;
+function s2(){
+ const N={A:{x:110,y:130},B:{x:310,y:130}};
+ const es=dir2?[{u:"A",v:"B",dir:1,w:"20 min",cls:"hot"},{u:"B",v:"A",dir:1,w:"12 min",cls:"warm"}]:[{u:"A",v:"B",cls:"hot"}];
+ draw(document.getElementById("g2"),N,es,{r:24,spread:90});
+ document.getElementById("g2u").classList.toggle("on",!dir2);document.getElementById("g2d").classList.toggle("on",dir2);
+ document.getElementById("g2n").textContent=dir2?2:1;
+ document.getElementById("g2w").textContent=dir2?"(A,B) and (B,A)":"{A, B}";
+ document.getElementById("g2m").textContent=dir2?"4 × 3 = 12":"4 × 3 / 2 = 6";
+ document.getElementById("g2h").textContent=dir2?"Two edges, one each way, each with its own weight.":"One edge, usable both ways.";
+}
+document.getElementById("g2u").onclick=()=>{dir2=false;s2()};document.getElementById("g2d").onclick=()=>{dir2=true;s2()};s2();
+
+/* step 3 */
+const tri=document.getElementById("tri");
+for(let k=1;k<=10;k++){const d=document.createElement("div");d.style.height=(k*(k-1)/2/45*100)+"%";d.innerHTML=`<span>${k*(k-1)/2}</span>`;tri.appendChild(d)}
+function s3(){
+ const K=+document.getElementById("kslider").value;document.getElementById("kval").textContent=K;
+ const N={},ids=[];for(let i=0;i<K;i++){const id=String.fromCharCode(65+i);ids.push(id);
+  const ang=-Math.PI/2+i*2*Math.PI/K, r=K===1?0:130;N[id]={x:180+r*Math.cos(ang),y:172+r*Math.sin(ang)}}
+ const es=[];const last=ids[K-1];
+ for(let i=0;i<K;i++)for(let j=i+1;j<K;j++)es.push({u:ids[i],v:ids[j],cls:ids[j]===last?"warm":"dim"});
+ draw(document.getElementById("g3"),N,es,{r:K>8?14:17,src:K>1?last:null});
+ document.getElementById("k1").textContent=K*(K-1)/2;document.getElementById("k2").textContent=K*(K-1);
+ document.getElementById("k3").textContent=Math.max(K-1,0);document.getElementById("k4").textContent=Math.max(K-1,0);
+ [...tri.children].forEach((d,i)=>d.classList.toggle("cur",i===K-1));
+}
+document.getElementById("kslider").oninput=s3;s3();
+
+/* step 4 */
+const DEF4=[["A","B","Flight",1],["A","B","Train",5],["A","B","Bus",7],["B","C","Train",3],["B","C","Bus",4]];
+let E4=DEF4.map(r=>r.slice());
+const N4={A:{x:50,y:130},B:{x:240,y:130},C:{x:400,y:130}};
+function s4(){
+ const f=document.getElementById("pf").value,t=document.getElementById("pt").value;
+ const match=E4.filter(r=>(r[0]===f&&r[1]===t)||(r[0]===t&&r[1]===f));
+ const ws=match.map(r=>+r[3]);const lo=ws.length?Math.min(...ws):null;
+ let loUsed=false;
+ const es=E4.map(r=>{const m=match.includes(r);let cls=m?"":"dim";if(m&&+r[3]===lo&&!loUsed){cls="hot";loUsed=true}else if(m)cls="warm";return{u:r[0],v:r[1],w:r[2]+" "+r[3]+"h",cls}});
+ draw(document.getElementById("g4"),N4,es,{spread:78,r:20});
+ document.getElementById("p1").textContent=match.length;
+ document.getElementById("p2").textContent=ws.length?lo:"none";
+ document.getElementById("p3").textContent=ws.length?Math.max(...ws):"none";
+ document.getElementById("p4").textContent=ws.reduce((a,b)=>a+b,0);
+}
+function t4(){const tb=document.querySelector("#e4 tbody");tb.innerHTML="";
+ E4.forEach((r,i)=>{const tr=document.createElement("tr");
+  tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="num"><input type="number" min="0" step="0.5" id="w4_${i}" aria-label="Weight of ${r[2]} ${r[0]} to ${r[1]}" value="${r[3]}" style="width:90px;text-align:right"></td>`;
+  tb.appendChild(tr);tr.querySelector("input").oninput=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){r[3]=v;s4()}}})}
+document.getElementById("pf").onchange=s4;document.getElementById("pt").onchange=s4;
+document.getElementById("e4reset").onclick=()=>{E4=DEF4.map(r=>r.slice());t4();s4()};
+t4();s4();
+
+/* playground */
+const P={nodes:{},edges:[],dir:false,src:null,hist:[]};
+const svg5=document.getElementById("g5");
+function pid(){for(let i=0;i<26;i++){const c=String.fromCharCode(65+i);if(!P.nodes[c])return c}return null}
+function snap(){P.hist.push(JSON.stringify({n:P.nodes,e:P.edges}))}
+function pclick(id){
+ if(P.src===null){P.src=id;msg(`From ${id}: click the node to connect it to.`)}
+ else{snap();const w=parseFloat(document.getElementById("pw").value);P.edges.push({u:P.src,v:id,w:isNaN(w)?1:w});
+  msg(P.src===id?`Self-loop on ${id} added.`:`Edge ${P.src}${P.dir?"→":"–"}${id} added.`);P.src=null}
+ s5();
+}
+function msg(t){document.getElementById("pmsg").textContent=t}
+svg5.addEventListener("click",ev=>{
+ if(P.src!==null){P.src=null;msg("Selection cleared.");s5();return}
+ const id=pid();if(!id){msg("26 nodes is the limit here.");return}
+ const pt=svg5.createSVGPoint();pt.x=ev.clientX;pt.y=ev.clientY;const p=pt.matrixTransform(svg5.getScreenCTM().inverse());
+ snap();P.nodes[id]={x:Math.round(Math.max(24,Math.min(456,p.x))),y:Math.round(Math.max(24,Math.min(336,p.y)))};
+ msg(`Node ${id} added. Click two nodes to join them.`);s5();
+});
+function s5(){
+ const ids=Object.keys(P.nodes).sort(),n=ids.length;
+ draw(svg5,P.nodes,P.edges.map(e=>({u:e.u,v:e.v,w:e.w,dir:P.dir})),{click:pclick,src:P.src,spread:34});
+ const m=P.edges.length,loops=P.edges.filter(e=>e.u===e.v).length;
+ const seen={};let parallel=false;P.edges.forEach(e=>{const k=P.dir?e.u+">"+e.v:[e.u,e.v].sort().join("|");if(seen[k])parallel=true;seen[k]=1});
+ const max=P.dir?n*(n-1):n*(n-1)/2;
+ document.getElementById("s1").textContent=n;document.getElementById("s2").textContent=m;
+ document.getElementById("s3").textContent=max;
+ const simpleEdges=Object.keys(seen).filter(k=>{const [a,b]=k.split(/[>|]/);return a!==b}).length;
+ document.getElementById("s4").textContent=max?Math.round(simpleEdges/max*100)+"% · "+(simpleEdges/max>=.5?"dense":"sparse"):"–";
+ const kind=(P.dir?"Directed ":"Undirected ")+(parallel?(loops?"pseudograph":"multigraph"):loops?"graph with self-loops":"simple graph");
+ document.getElementById("s5").textContent=n?kind:"–";
+ document.getElementById("s6").textContent=P.edges.reduce((s,e)=>s+e.w,0);
+ // matrix
+ if(!n){document.getElementById("pmat").innerHTML='<p class="hint-line" style="margin:0">Add nodes to see their degrees and the adjacency matrix.</p>';return}
+ const M={};ids.forEach(a=>{M[a]={};ids.forEach(b=>M[a][b]=0)});
+ P.edges.forEach(e=>{M[e.u][e.v]++;if(!P.dir&&e.u!==e.v)M[e.v][e.u]++});
+ let h='<table class="matrix"><thead><tr><th></th>'+ids.map(i=>`<th>${i}</th>`).join("")+`<th>${P.dir?"Out / in":"Degree"}</th></tr></thead><tbody>`;
+ ids.forEach(a=>{
+  const out=P.edges.filter(e=>e.u===a).length,inn=P.edges.filter(e=>e.v===a).length;
+  const deg=P.edges.reduce((s,e)=>s+(e.u===a?1:0)+(e.v===a?1:0),0);
+  h+=`<tr><th>${a}</th>`+ids.map(b=>`<td class="${M[a][b]?"on":""}">${M[a][b]}</td>`).join("")+`<td>${P.dir?out+" / "+inn:deg}</td></tr>`});
+ h+='</tbody></table><p class="hint-line" style="margin:8px 0 0">Each cell counts the edges from the row node to the column node. '+(P.dir?"Directed graphs need not be symmetric.":"Undirected graphs are symmetric across the diagonal; a self-loop adds 2 to its node's degree.")+'</p>';
+ document.getElementById("pmat").innerHTML=h;
+}
+document.getElementById("pu").onclick=()=>{P.dir=false;document.getElementById("pu").classList.add("on");document.getElementById("pd").classList.remove("on");s5()};
+document.getElementById("pd").onclick=()=>{P.dir=true;document.getElementById("pd").classList.add("on");document.getElementById("pu").classList.remove("on");s5()};
+document.getElementById("pundo").onclick=()=>{const h=P.hist.pop();if(h){const o=JSON.parse(h);P.nodes=o.n;P.edges=o.e;P.src=null;msg("Undone.");s5()}};
+document.getElementById("pclear").onclick=()=>{snap();P.nodes={};P.edges=[];P.src=null;msg("Cleared. Click empty space to place node A.");s5()};
+function example(){P.nodes={A:{x:90,y:90},B:{x:250,y:60},C:{x:400,y:120},D:{x:170,y:260},E:{x:360,y:280}};
+ P.edges=[{u:"A",v:"B",w:4},{u:"B",v:"C",w:2},{u:"A",v:"D",w:3},{u:"B",v:"D",w:6},{u:"C",v:"E",w:5},{u:"D",v:"E",w:1},{u:"D",v:"E",w:7}];P.src=null}
+document.getElementById("pex").onclick=()=>{snap();example();msg("Example loaded: it has two parallel D–E edges.");s5()};
+example();s5();
+
+/* ---------- routing ---------- */
+const VIEWS=["start","kernel","step-1","step-2","step-3","step-4","playground"];
+function route(){let v=location.hash.slice(1);if(!VIEWS.includes(v))v="start";
+ document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+ document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===v));
+ window.scrollTo(0,0)}
+window.addEventListener("hashchange",route);
+renderQs();refresh();route();
+})();
+</script>
+</body>
+</html>

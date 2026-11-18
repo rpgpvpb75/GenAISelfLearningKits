@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.classList.add("js")</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chemical Equilibrium: Self-Learning Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: sticky top nav of sections; considerations are cards with a mini map beside the question; playground is a map plus step log. */
+:root{--bg:#F4F6F8;--panel:#FFFFFF;--ink:#16212E;--muted:#5B6878;--line:#D7DEE6;--accent:#0B7A83;--accent-soft:#DDF0F1;--warm:#C26A12;--warm-soft:#FBEBD8;
+--ok:#1E7B45;--ok-soft:#DCF1E3;--bad:#B3362B;--bad-soft:#F8DEDB;--edge:#8796A8;
+--display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0F151C;--panel:#17202A;--ink:#E6ECF2;--muted:#9AA8B8;--line:#2A3644;--accent:#3FB8C1;--accent-soft:#16363A;--warm:#F0A04B;--warm-soft:#3A2A17;--ok:#5CCB86;--ok-soft:#173526;--bad:#F07F73;--bad-soft:#3D1F1C;--edge:#6E7E91;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F151C;--panel:#17202A;--ink:#E6ECF2;--muted:#9AA8B8;--line:#2A3644;--accent:#3FB8C1;--accent-soft:#16363A;--warm:#F0A04B;--warm-soft:#3A2A17;--ok:#5CCB86;--ok-soft:#173526;--bad:#F07F73;--bad-soft:#3D1F1C;--edge:#6E7E91;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.15;text-wrap:balance}
+h1{font-size:30px}h2{font-size:23px}h3{font-size:17px}
+button,input,select,textarea{font:inherit;color:inherit}
+button,a,input,select,label,.opt{touch-action:manipulation;-webkit-tap-highlight-color:rgba(11,122,131,.18)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+nav{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;background:var(--panel);border-bottom:1px solid var(--line);padding:10px clamp(12px,3vw,28px)}
+nav::-webkit-scrollbar{display:none}
+nav a{flex:none;white-space:nowrap;text-decoration:none;color:var(--ink);font-size:14px;padding:6px 12px;border-radius:999px;border:1px solid var(--line)}
+nav a.on{background:var(--accent);border-color:var(--accent);color:#fff}
+nav .score{margin-left:auto;flex:none;font-size:13px;color:var(--muted);align-self:center;white-space:nowrap}
+main{max-width:1080px;margin:0 auto;padding:24px clamp(14px,3vw,32px) 60px;min-width:0}
+section.view{display:flex;flex-direction:column;gap:16px;margin-bottom:28px}
+.js section.view{display:none}.js section.view.on{display:flex}
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+p{margin:0;max-width:72ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--muted)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.g-perfect{background:var(--ok-soft);color:var(--ok)}.g-partial{background:var(--warm-soft);color:var(--warm)}.g-wrong{background:var(--bad-soft);color:var(--bad)}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.cch{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.clab{font-family:var(--mono);font-size:12px;color:#fff;background:var(--accent);padding:2px 9px;border-radius:6px}
+.rtag,.kref{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.ccg{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px;align-items:start}
+.ccg>*{min-width:0}
+.mapbox{background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.mini{display:block;width:100%;height:auto}
+.rd{stroke:var(--edge);stroke-width:1.6}.rd.hot{stroke:var(--warm);stroke-width:3.2}
+.ahf{fill:var(--edge)}.ahh{fill:var(--warm)}
+.rw{font-family:var(--mono);font-size:12px;fill:var(--muted);paint-order:stroke;stroke:var(--bg);stroke-width:4px}.rw.hot{fill:var(--warm);font-weight:600}
+.city rect{fill:var(--panel);stroke:var(--ink);stroke-width:1.3}.city.lk rect{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+.city .cn{font-family:var(--body);font-size:11px;font-weight:600;fill:var(--ink)}.city .cd{font-family:var(--mono);font-size:12px;fill:var(--accent);font-weight:600}
+.q{font-weight:600;font-size:15.5px}
+.rl{font-size:13px;font-weight:600;color:var(--muted);margin:0}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 12px;cursor:pointer;line-height:1.4}
+.opt:hover{border-color:var(--accent)}
+.opt.sel.g-perfect{border-color:var(--ok);background:var(--ok-soft);color:var(--ink)}
+.opt.sel.g-partial{border-color:var(--warm);background:var(--warm-soft);color:var(--ink)}
+.opt.sel.g-wrong{border-color:var(--bad);background:var(--bad-soft);color:var(--ink)}
+.opt .tag{float:right;margin-left:8px}
+.ofb,.jfb{font-size:14px}
+.ofb:empty,.jfb:empty{display:none}
+textarea{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;resize:vertical}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-color:transparent;color:var(--accent)}
+.fbline{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+select,input[type=number]{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-radius:8px;background:var(--bg);font-size:14px}
+.stat b{font-family:var(--mono);text-align:right}
+.stat.hl{background:var(--accent-soft)}.stat.hl b{color:var(--accent)}
+.pgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start}
+.pgrid>*{min-width:0}
+.pgmap{background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+.pgmap svg{display:block;width:100%;min-width:460px;height:auto}
+.pr{stroke:var(--edge);stroke-width:1.5;cursor:pointer}.pr.closed{stroke-dasharray:4 4;opacity:.45}.pr.cur{stroke:var(--warm);stroke-width:4}.pr.best{stroke:var(--ok);stroke-width:4}
+.prhit{stroke:transparent;stroke-width:14;cursor:pointer}
+.pw{font-family:var(--mono);font-size:10.5px;fill:var(--muted);paint-order:stroke;stroke:var(--bg);stroke-width:3.5px;pointer-events:none}
+.pw.cur{fill:var(--warm);font-weight:600}
+.pc circle{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}.pc.lk circle{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2.2}
+.pc.cur circle{fill:var(--warm);stroke:var(--warm)}.pc.end circle{stroke:var(--ok);stroke-width:3}
+.pc .nm{font-family:var(--body);font-size:11.5px;font-weight:600;fill:var(--ink)}.pc .ds{font-family:var(--mono);font-size:11px;fill:var(--accent);font-weight:600}
+.log{max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+.log td{font-size:13px}.log td.c{font-family:var(--mono);font-size:12.5px}
+.log tr.now td{background:var(--warm-soft)}
+.k-up{color:var(--ok)}.k-no{color:var(--muted)}.k-key{color:var(--warm)}
+#nojs{padding:12px 14px;border-radius:10px;border:2px solid var(--warm);background:var(--warm-soft);font-size:14.5px}
+.js #nojs{display:none}
+@media (max-width:760px){.ccg,.pgrid{grid-template-columns:minmax(0,1fr)}input,select,textarea{font-size:16px!important}h1{font-size:25px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* chemistry additions: species colours N2 / H2 / NH3, rate arrows, playground chart */
+:root{--n2:#2E6FB5;--h2:#8A5CC2;--nh3:#0B7A83;--fw:#C26A12;--bw:#1E7B45}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--n2:#6FA8E8;--h2:#B794E6;--nh3:#3FB8C1;--fw:#F0A04B;--bw:#5CCB86}}
+.sp0{fill:var(--n2)}.sp1{fill:var(--h2)}.sp2{fill:var(--nh3)}
+.vcap{font-family:var(--body);font-size:12.5px;font-weight:600;fill:var(--ink)}
+.vv{font-family:var(--mono);font-size:11px;fill:var(--ink)}.vn{font-family:var(--body);font-size:12px;font-weight:600;fill:var(--ink)}
+.vs{font-family:var(--body);font-size:11px;fill:var(--muted)}.ax{stroke:var(--line);stroke-width:1.5}
+.fw{stroke:var(--fw);stroke-width:5;stroke-linecap:round}.bw{stroke:var(--bw);stroke-width:5;stroke-linecap:round}
+#arh{fill:var(--fw)}#alh{fill:var(--bw)}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.ctl .grp b{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-right:2px}
+.chart{background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.chart svg{display:block;width:100%;height:auto}
+.gl{stroke:var(--line);stroke-width:1}.gt{font-family:var(--mono);font-size:10px;fill:var(--muted)}
+.ln{fill:none;stroke-width:2.4;stroke-linejoin:round}.l0{stroke:var(--n2)}.l1{stroke:var(--h2)}.l2{stroke:var(--nh3)}
+.ev{stroke:var(--warm);stroke-width:1;stroke-dasharray:3 3}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.rbar{height:12px;border-radius:6px;min-width:2px;transition:width .15s}
+.status{font-weight:600;padding:8px 12px;border-radius:8px}
+.st-f{background:var(--warm-soft);color:var(--warm)}.st-b{background:var(--ok-soft);color:var(--ok)}.st-e{background:var(--accent-soft);color:var(--accent)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path id="arh" d="M0,0L10,5L0,10z"/></marker>
+<marker id="al" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path id="alh" d="M0,0L10,5L0,10z"/></marker></defs></svg>
+<nav aria-label="Sections">
+ <a href="#start" data-v="start">Start</a><a href="#kernel" data-v="kernel">Kernel concepts</a><a href="#basics" data-v="basics">Equilibrium basics</a><a href="#kq" data-v="kq">K and Q</a><a href="#shift" data-v="shift">Disturbing equilibrium</a><a href="#playground" data-v="playground">Playground</a>
+ <span class="score" id="score"></span>
+</nav>
+<main>
+<div id="nojs" role="note">This preview can't run the interactive parts (the iPhone/WhatsApp file preview doesn't run JavaScript). The questions and options are readable below; open the online link in Safari to answer them and use the playground.</div>
+
+<section class="view" id="v-start">
+ <div class="eyebrow">Self-learning guide · Learning Kernel</div>
+ <h1>Chemical Equilibrium</h1>
+ <p>Everything here uses one reaction, making ammonia: <b>N₂ + 3H₂ ⇌ 2NH₃</b>, which gives out heat (ΔH = −92 kJ/mol). Each kernel concept is tested by considerations. For each one, pick a rationale and write your own justification. Both are graded <span class="pill g-perfect">Perfect</span> <span class="pill g-partial">To some extent but not perfect</span> or <span class="pill g-wrong">Wrong answer</span>.</p>
+ <div class="card">
+  <h3>Picture it first</h3>
+  <p>Two rooms joined by a doorway, with people walking both ways. After a while the number in each room stops changing, not because people stopped walking, but because as many cross each way every minute. That is equilibrium.</p>
+ </div>
+ <div class="card">
+  <h3>Your progress</h3>
+  <div class="scroll"><table><thead><tr><th>Part</th><th>Considerations</th><th>Rationale picked</th><th>Rationale perfect</th><th>Justification perfect</th><th>Justification partly right</th></tr></thead><tbody id="prog"></tbody></table></div>
+  <div class="row"><a class="btn primary" href="#kernel" style="text-decoration:none">Start with the kernel concepts</a><button class="btn" id="reset" type="button">Clear my answers</button></div>
+ </div>
+ <p style="font-size:13px;color:var(--muted)">Justifications are checked offline for the key ideas and numbers, not for whether the argument is logically sound.</p>
+</section>
+
+<section class="view" id="v-kernel">
+ <div class="eyebrow">Kernel concepts</div>
+ <h2>The 7 ideas everything is built from</h2>
+ <p>K1–K3 are the basics, K4–K5 are K and Q, and K6–K7 are what happens when you disturb an equilibrium. Each consideration is tagged with the concept it tests.</p>
+ <div class="card scroll"><table><thead><tr><th>#</th><th>Kernel concept</th><th>Check</th></tr></thead><tbody><tr><td>K1</td><td>A reversible reaction runs both ways at once: reactants form products, and products break back into reactants</td><td>Accurate. Strictly, every reaction is reversible; we call it reversible when the backward reaction is large enough to matter.</td></tr><tr><td>K2</td><td>Equilibrium is reached in a closed system when the forward rate equals the backward rate; the amounts stop changing, but both reactions keep going (dynamic equilibrium)</td><td>Accurate. &#x27;Closed&#x27; matters: if a product escapes (a gas leaving an open flask), the backward reaction can&#x27;t keep up and equilibrium is never reached.</td></tr><tr><td>K3</td><td>At equilibrium the amounts are constant, not equal; the mixture can be mostly products or mostly reactants</td><td>Accurate. This is the most common misconception: equal rates, not equal amounts.</td></tr><tr><td>K4</td><td>The equilibrium constant K = [products]^coefficients / [reactants]^coefficients; a large K means mostly products, a small K mostly reactants; pure solids and liquids are left out</td><td>Accurate, with a qualifier: K written with concentrations is Kc (gases can also use partial pressures, Kp). K has units unless the powers cancel; for ammonia, Kc is in L²/mol².</td></tr><tr><td>K5</td><td>The reaction quotient Q has the same form as K but uses the amounts present now: Q &lt; K goes forward, Q &gt; K goes backward, Q = K is equilibrium</td><td>Accurate. Q is a snapshot; comparing it with K predicts the direction before anything moves.</td></tr><tr><td>K6</td><td>Le Chatelier: when an equilibrium is disturbed by a change in concentration, pressure or temperature, it shifts to partly undo the change</td><td>Accurate. &#x27;Partly&#x27; is important: the shift never fully cancels the change. Adding an inert gas at constant volume doesn&#x27;t count as a pressure change, because no concentration changes.</td></tr><tr><td>K7</td><td>Only temperature changes K; a catalyst speeds up both directions equally, so equilibrium is reached sooner but the mixture is the same</td><td>Accurate. Temperature changes K because the forward and backward rates depend on temperature differently; a catalyst changes both by the same factor.</td></tr></tbody></table></div>
+ <div class="row"><a class="btn primary" href="#basics" style="text-decoration:none">Next: Equilibrium basics</a></div>
+</section>
+
+<section class="view" id="v-basics">
+ <div class="eyebrow">Equilibrium basics · Kernel concepts 1–3 · 6 considerations</div>
+ <h2>Two reactions, one balance</h2>
+<article class="cc" id="E1" data-id="E1">
+  <div class="cch"><span class="clab">Consideration 1</span><h3>Start with only ammonia</h3><span class="kref">Kernel 1</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Only NH₃ at the start"><text x="150" y="20" text-anchor="middle" class="vcap">Only NH₃ at the start</text><rect x="30" y="170.0" width="34" height="1.0" rx="3" class="sp0"/><text x="47" y="165.0" text-anchor="middle" class="vv">0</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="170.0" width="34" height="1.0" rx="3" class="sp1"/><text x="99" y="165.0" text-anchor="middle" class="vv">0</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="108.1" width="34" height="61.9" rx="3" class="sp2"/><text x="151" y="103.1" text-anchor="middle" class="vv">2</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="208" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="288" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">A sealed flask starts with only NH₃. What happens?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) NH₃ breaks down into N₂ and H₂</button><button class="opt" data-i="1" type="button">b) Nothing: NH₃ is the product, so it can&#x27;t react</button><button class="opt" data-i="2" type="button">c) Some NH₃ breaks into N₂ and H₂, and as they form they start reacting back into NH₃</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jE1">Your justification</label>
+   <textarea id="jE1" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="E2" data-id="E2">
+  <div class="cch"><span class="clab">Consideration 2</span><h3>Reading the ⇌ sign</h3><span class="kref">Kernel 1</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="N₂ + 3H₂ ⇌ 2NH₃"><text x="150" y="20" text-anchor="middle" class="vcap">N₂ + 3H₂ ⇌ 2NH₃</text><rect x="30" y="139.0" width="34" height="31.0" rx="3" class="sp0"/><text x="47" y="134.0" text-anchor="middle" class="vv">1</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="77.1" width="34" height="92.9" rx="3" class="sp1"/><text x="99" y="72.1" text-anchor="middle" class="vv">3</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="170.0" width="34" height="1.0" rx="3" class="sp2"/><text x="151" y="165.0" text-anchor="middle" class="vv">0</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="288" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="208" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">In N₂ + 3H₂ ⇌ 2NH₃, what does the ⇌ sign tell you?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) The reaction goes forward and backward at the same time</button><button class="opt" data-i="1" type="button">b) The reaction can go backward if you heat it</button><button class="opt" data-i="2" type="button">c) The amounts on both sides are equal</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jE2">Your justification</label>
+   <textarea id="jE2" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="E3" data-id="E3">
+  <div class="cch"><span class="clab">Consideration 3</span><h3>When the amounts stop changing</h3><span class="kref">Kernel 2</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Forward and backward rates meet"><text x="150" y="20" text-anchor="middle" class="vcap">Forward and backward rates meet</text><rect x="30" y="148.3" width="34" height="21.7" rx="3" class="sp0"/><text x="47" y="143.3" text-anchor="middle" class="vv">0.7</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="105.0" width="34" height="65.0" rx="3" class="sp1"/><text x="99" y="100.0" text-anchor="middle" class="vv">2.1</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="151.4" width="34" height="18.6" rx="3" class="sp2"/><text x="151" y="146.4" text-anchor="middle" class="vv">0.6</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="248" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="248" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">N₂ and H₂ start reacting. The forward rate falls and the backward rate rises. When do the amounts stop changing?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) When both reactions stop completely</button><button class="opt" data-i="1" type="button">b) When the forward rate becomes equal to the backward rate</button><button class="opt" data-i="2" type="button">c) When the reaction slows down</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jE3">Your justification</label>
+   <textarea id="jE3" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="E4" data-id="E4">
+  <div class="cch"><span class="clab">Consideration 4</span><h3>Is it still reacting?</h3><span class="kref">Kernel 2</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Amounts steady, reactions still running"><text x="150" y="20" text-anchor="middle" class="vcap">Amounts steady, reactions still running</text><rect x="30" y="148.3" width="34" height="21.7" rx="3" class="sp0"/><text x="47" y="143.3" text-anchor="middle" class="vv">0.7</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="105.0" width="34" height="65.0" rx="3" class="sp1"/><text x="99" y="100.0" text-anchor="middle" class="vv">2.1</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="151.4" width="34" height="18.6" rx="3" class="sp2"/><text x="151" y="146.4" text-anchor="middle" class="vv">0.6</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="248" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="248" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">At equilibrium, some N₂ is swapped for labelled N₂ (made with ¹⁵N). The total amounts don&#x27;t change, but later the label shows up in NH₃. Why?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) Because equilibrium is dynamic</button><button class="opt" data-i="1" type="button">b) Adding the label broke the equilibrium</button><button class="opt" data-i="2" type="button">c) Both reactions keep running, so labelled N₂ keeps turning into NH₃ and back</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jE4">Your justification</label>
+   <textarea id="jE4" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="E5" data-id="E5">
+  <div class="cch"><span class="clab">Consideration 5</span><h3>Constant or equal?</h3><span class="kref">Kernel 3</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="0.5 · 1.5 · 0.2 mol/L"><text x="150" y="20" text-anchor="middle" class="vcap">0.5 · 1.5 · 0.2 mol/L</text><rect x="30" y="154.5" width="34" height="15.5" rx="3" class="sp0"/><text x="47" y="149.5" text-anchor="middle" class="vv">0.5</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="123.6" width="34" height="46.4" rx="3" class="sp1"/><text x="99" y="118.6" text-anchor="middle" class="vv">1.5</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="163.8" width="34" height="6.2" rx="3" class="sp2"/><text x="151" y="158.8" text-anchor="middle" class="vv">0.2</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="240" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="240" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">A flask at equilibrium holds 0.5 mol/L N₂, 1.5 mol/L H₂ and 0.2 mol/L NH₃. Can it really be at equilibrium when the amounts aren&#x27;t equal?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) Yes: at equilibrium the amounts are constant, not equal</button><button class="opt" data-i="1" type="button">b) Yes, because nothing is changing any more</button><button class="opt" data-i="2" type="button">c) No: at equilibrium all the amounts must be equal</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jE5">Your justification</label>
+   <textarea id="jE5" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="E6" data-id="E6">
+  <div class="cch"><span class="clab">Consideration 6</span><h3>Which side is favoured?</h3><span class="kref">Kernel 3</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="0.1 · 0.3 · 3.0 mol/L"><text x="150" y="20" text-anchor="middle" class="vcap">0.1 · 0.3 · 3.0 mol/L</text><rect x="30" y="166.9" width="34" height="3.1" rx="3" class="sp0"/><text x="47" y="161.9" text-anchor="middle" class="vv">0.1</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="160.7" width="34" height="9.3" rx="3" class="sp1"/><text x="99" y="155.7" text-anchor="middle" class="vv">0.3</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="77.1" width="34" height="92.9" rx="3" class="sp2"/><text x="151" y="72.1" text-anchor="middle" class="vv">3</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="232" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="232" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">An equilibrium mixture has 0.1 mol/L N₂, 0.3 mol/L H₂ and 3.0 mol/L NH₃. Which side does it favour?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) Neither: equilibrium is always 50:50</button><button class="opt" data-i="1" type="button">b) Products: there is far more NH₃ than N₂ or H₂</button><button class="opt" data-i="2" type="button">c) Products, because it&#x27;s at equilibrium</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jE6">Your justification</label>
+   <textarea id="jE6" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article>
+ <div class="row"><a class="btn primary" href="#kq" style="text-decoration:none">Next: K and Q</a></div>
+</section>
+<section class="view" id="v-kq">
+ <div class="eyebrow">K and Q · Kernel concepts 4–5 · 4 considerations</div>
+ <h2>Where the balance sits, and which way it moves</h2>
+<article class="cc" id="Q1" data-id="Q1">
+  <div class="cch"><span class="clab">Consideration 1</span><h3>Write K</h3><span class="kref">Kernel 4</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="K = [NH₃]² / ([N₂][H₂]³)"><text x="150" y="20" text-anchor="middle" class="vcap">K = [NH₃]² / ([N₂][H₂]³)</text><rect x="30" y="148.3" width="34" height="21.7" rx="3" class="sp0"/><text x="47" y="143.3" text-anchor="middle" class="vv">0.7</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="105.0" width="34" height="65.0" rx="3" class="sp1"/><text x="99" y="100.0" text-anchor="middle" class="vv">2.1</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="151.4" width="34" height="18.6" rx="3" class="sp2"/><text x="151" y="146.4" text-anchor="middle" class="vv">0.6</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="248" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="248" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">What is K for N₂ + 3H₂ ⇌ 2NH₃?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) K = [NH₃] / ([N₂][H₂])</button><button class="opt" data-i="1" type="button">b) K = [N₂][H₂]³ / [NH₃]²</button><button class="opt" data-i="2" type="button">c) K = [NH₃]² / ([N₂][H₂]³)</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jQ1">Your justification</label>
+   <textarea id="jQ1" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="Q2" data-id="Q2">
+  <div class="cch"><span class="clab">Consideration 2</span><h3>A very large K</h3><span class="kref">Kernel 4</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="K ≈ 6 × 10⁵ at 25 °C"><text x="150" y="20" text-anchor="middle" class="vcap">K ≈ 6 × 10⁵ at 25 °C</text><rect x="30" y="168.5" width="34" height="1.5" rx="3" class="sp0"/><text x="47" y="163.5" text-anchor="middle" class="vv">0.05</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="165.4" width="34" height="4.6" rx="3" class="sp1"/><text x="99" y="160.4" text-anchor="middle" class="vv">0.15</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="77.1" width="34" height="92.9" rx="3" class="sp2"/><text x="151" y="72.1" text-anchor="middle" class="vv">3</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="224" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="224" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">At 25 °C, K for this reaction is about 6 × 10⁵. What does the equilibrium mixture look like?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) Mostly products: a large K means the top of the fraction is much bigger</button><button class="opt" data-i="1" type="button">b) Mostly products, so the reaction is fast</button><button class="opt" data-i="2" type="button">c) Mostly reactants</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jQ2">Your justification</label>
+   <textarea id="jQ2" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="Q3" data-id="Q3">
+  <div class="cch"><span class="clab">Consideration 3</span><h3>Q below K</h3><span class="kref">Kernel 5</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Q = 0.1, K = 0.5"><text x="150" y="20" text-anchor="middle" class="vcap">Q = 0.1, K = 0.5</text><rect x="30" y="139.0" width="34" height="31.0" rx="3" class="sp0"/><text x="47" y="134.0" text-anchor="middle" class="vv">1</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="77.1" width="34" height="92.9" rx="3" class="sp1"/><text x="99" y="72.1" text-anchor="middle" class="vv">3</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="160.7" width="34" height="9.3" rx="3" class="sp2"/><text x="151" y="155.7" text-anchor="middle" class="vv">0.3</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="272" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="224" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">At this temperature K = 0.5 (L²/mol²). A mixture right now has Q = 0.1. Which way will it go?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) Backward, because Q is smaller than K</button><button class="opt" data-i="1" type="button">b) Forward: Q &lt; K, so more products form until Q rises to K</button><button class="opt" data-i="2" type="button">c) Forward, because Q is small</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jQ3">Your justification</label>
+   <textarea id="jQ3" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="Q4" data-id="Q4">
+  <div class="cch"><span class="clab">Consideration 4</span><h3>Is this mixture at equilibrium?</h3><span class="kref">Kernel 5</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Q = 0.5² / (1 × 1³)"><text x="150" y="20" text-anchor="middle" class="vcap">Q = 0.5² / (1 × 1³)</text><rect x="30" y="139.0" width="34" height="31.0" rx="3" class="sp0"/><text x="47" y="134.0" text-anchor="middle" class="vv">1</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="139.0" width="34" height="31.0" rx="3" class="sp1"/><text x="99" y="134.0" text-anchor="middle" class="vv">1</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="154.5" width="34" height="15.5" rx="3" class="sp2"/><text x="151" y="149.5" text-anchor="middle" class="vv">0.5</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="248" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="248" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">A mixture has [N₂] = 1, [H₂] = 1 and [NH₃] = 0.5 mol/L. K = 0.25. Is it at equilibrium?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) Yes, because the amounts aren&#x27;t changing</button><button class="opt" data-i="1" type="button">b) No, because the amounts are not equal</button><button class="opt" data-i="2" type="button">c) Yes: Q = 0.5² / (1 × 1³) = 0.25, which equals K</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jQ4">Your justification</label>
+   <textarea id="jQ4" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article>
+ <div class="row"><a class="btn primary" href="#shift" style="text-decoration:none">Next: Disturbing equilibrium</a></div>
+</section>
+<section class="view" id="v-shift">
+ <div class="eyebrow">Disturbing equilibrium · Kernel concepts 6–7 · 4 considerations</div>
+ <h2>Push it, and it pushes back</h2>
+<article class="cc" id="L1" data-id="L1">
+  <div class="cch"><span class="clab">Consideration 1</span><h3>Add more N₂</h3><span class="kref">Kernel 6</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Extra N₂ added"><text x="150" y="20" text-anchor="middle" class="vcap">Extra N₂ added</text><rect x="30" y="126.7" width="34" height="43.3" rx="3" class="sp0"/><text x="47" y="121.7" text-anchor="middle" class="vv">1.4</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="105.0" width="34" height="65.0" rx="3" class="sp1"/><text x="99" y="100.0" text-anchor="middle" class="vv">2.1</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="151.4" width="34" height="18.6" rx="3" class="sp2"/><text x="151" y="146.4" text-anchor="middle" class="vv">0.6</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="272" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="248" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">At equilibrium, extra N₂ is added. What happens?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) It shifts forward: more NH₃ forms, using up some of the added N₂</button><button class="opt" data-i="1" type="button">b) More NH₃ forms</button><button class="opt" data-i="2" type="button">c) It shifts backward to make even more N₂</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jL1">Your justification</label>
+   <textarea id="jL1" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="L2" data-id="L2">
+  <div class="cch"><span class="clab">Consideration 2</span><h3>Squeeze the flask</h3><span class="kref">Kernel 6</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Volume halved: every concentration doubles"><text x="150" y="20" text-anchor="middle" class="vcap">Volume halved: every concentration doubles</text><rect x="30" y="126.7" width="34" height="43.3" rx="3" class="sp0"/><text x="47" y="121.7" text-anchor="middle" class="vv">1.4</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="40.0" width="34" height="130.0" rx="3" class="sp1"/><text x="99" y="35.0" text-anchor="middle" class="vv">4.2</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="132.9" width="34" height="37.1" rx="3" class="sp2"/><text x="151" y="127.9" text-anchor="middle" class="vv">1.2</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="280" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="248" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">The gas mixture is squeezed into half the volume, doubling the pressure. Which way does it shift?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) Backward, because the left side has more molecules to push back</button><button class="opt" data-i="1" type="button">b) Forward: the right side has fewer gas molecules (2 against 4)</button><button class="opt" data-i="2" type="button">c) Forward, because pressure speeds up reactions</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jL2">Your justification</label>
+   <textarea id="jL2" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="L3" data-id="L3">
+  <div class="cch"><span class="clab">Consideration 3</span><h3>Raise the temperature</h3><span class="kref">Kernel 7</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Hotter: K gets smaller"><text x="150" y="20" text-anchor="middle" class="vcap">Hotter: K gets smaller</text><rect x="30" y="142.1" width="34" height="27.9" rx="3" class="sp0"/><text x="47" y="137.1" text-anchor="middle" class="vv">0.9</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="86.4" width="34" height="83.6" rx="3" class="sp1"/><text x="99" y="81.4" text-anchor="middle" class="vv">2.7</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="163.8" width="34" height="6.2" rx="3" class="sp2"/><text x="151" y="158.8" text-anchor="middle" class="vv">0.2</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="240" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="264" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">The forward reaction gives out heat (ΔH = −92 kJ/mol). The temperature is raised. What happens?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) It shifts backward</button><button class="opt" data-i="1" type="button">b) It shifts forward, because heat speeds up reactions</button><button class="opt" data-i="2" type="button">c) It shifts backward, absorbing heat: less NH₃, and K gets smaller</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jL3">Your justification</label>
+   <textarea id="jL3" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article><article class="cc" id="L4" data-id="L4">
+  <div class="cch"><span class="clab">Consideration 4</span><h3>Add a catalyst</h3><span class="kref">Kernel 7</span></div>
+  <div class="ccg"><div class="mapbox"><svg viewBox="0 0 300 230" class="mini" role="img" aria-label="Both rates faster, still equal"><text x="150" y="20" text-anchor="middle" class="vcap">Both rates faster, still equal</text><rect x="30" y="148.3" width="34" height="21.7" rx="3" class="sp0"/><text x="47" y="143.3" text-anchor="middle" class="vv">0.7</text><text x="47" y="186" text-anchor="middle" class="vn">N₂</text><rect x="82" y="105.0" width="34" height="65.0" rx="3" class="sp1"/><text x="99" y="100.0" text-anchor="middle" class="vv">2.1</text><text x="99" y="186" text-anchor="middle" class="vn">H₂</text><rect x="134" y="151.4" width="34" height="18.6" rx="3" class="sp2"/><text x="151" y="146.4" text-anchor="middle" class="vv">0.6</text><text x="151" y="186" text-anchor="middle" class="vn">NH₃</text><line x1="22" y1="170" x2="180" y2="170" class="ax"/><text x="100" y="202" text-anchor="middle" class="vs">mol/L</text><text x="200" y="56" class="vs">forward rate</text><line x1="200" y1="70" x2="280" y2="70" class="fw" marker-end="url(#ar)"/><text x="200" y="116" class="vs">backward rate</text><line x1="280" y1="130" x2="200" y2="130" class="bw" marker-end="url(#al)"/></svg></div>
+  <div class="ccq"><p class="q">An iron catalyst is added to a mixture already at equilibrium. What changes?</p>
+   <p class="rl">Rationale: pick one option</p><div class="opts"><button class="opt" data-i="0" type="button">a) Nothing in the mixture: it speeds up both directions equally, so K and the amounts stay the same</button><button class="opt" data-i="1" type="button">b) Equilibrium is reached faster</button><button class="opt" data-i="2" type="button">c) More NH₃ forms</button></div><div class="ofb" aria-live="polite"></div>
+   <label class="rl" for="jL4">Your justification</label>
+   <textarea id="jL4" rows="3" placeholder="Explain why, in your own words"></textarea>
+   <div class="row"><button class="btn primary jchk" type="button">Check justification</button><button class="btn ghost jmodel" type="button">Show a perfect answer</button></div>
+   <div class="jfb" aria-live="polite"></div></div></div>
+</article>
+ <div class="row"><a class="btn primary" href="#playground" style="text-decoration:none">Next: Playground</a></div>
+</section>
+
+<section class="view" id="v-playground">
+ <div class="eyebrow">Playground</div>
+ <h2>Disturb the ammonia equilibrium and watch it respond</h2>
+ <p>The flask runs live. Add or remove gases, squeeze or expand it, change the temperature or add a catalyst. Every change is logged as a consideration with its rationale, and so is the moment equilibrium returns.</p>
+ <div class="card">
+  <div class="ctl">
+   <div class="grp"><b>Add</b><button class="btn" data-add="0" type="button">+ N₂</button><button class="btn" data-add="1" type="button">+ H₂</button><button class="btn" data-add="2" type="button">+ NH₃</button><button class="btn" data-rem="2" type="button">Remove half the NH₃</button></div>
+   <div class="grp"><b>Pressure</b><button class="btn" id="psq" type="button">Squeeze (volume ÷ 2)</button><button class="btn" id="pex" type="button">Expand (volume × 2)</button></div>
+   <div class="grp"><b>Temperature</b><button class="btn" id="tdn" type="button">− 100 K</button><b id="tval" style="font-family:var(--mono);color:var(--ink)">700 K</b><button class="btn" id="tup" type="button">+ 100 K</button></div>
+   <div class="grp"><b>Catalyst</b><button class="btn" id="cat" type="button" aria-pressed="false">Add catalyst</button></div>
+   <div class="grp"><button class="btn primary" id="run" type="button">❚❚ Pause</button><button class="btn" id="rst" type="button">Start again</button></div>
+  </div>
+  <div class="status st-f" id="status" aria-live="polite"></div>
+  <div class="pgrid">
+   <div class="chart"><svg id="chart" viewBox="0 0 600 300" role="img" aria-label="Concentrations over time"></svg>
+    <div class="legend" style="padding:6px 10px"><span><span class="sw" style="background:var(--n2)"></span>N₂</span><span><span class="sw" style="background:var(--h2)"></span>H₂</span><span><span class="sw" style="background:var(--nh3)"></span>NH₃</span><span>dashed line = a change you made</span></div></div>
+   <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="stat"><span>[N₂] · [H₂] · [NH₃] (mol/L)</span><b id="conc">—</b></div>
+    <div class="stat hl"><span>Q now</span><b id="qv">—</b></div>
+    <div class="stat hl"><span>K at this temperature</span><b id="kv">—</b></div>
+    <div class="stat" style="flex-direction:column"><span>Forward rate <b id="rfv" style="float:right">—</b></span><div class="rbar" id="rfb" style="background:var(--fw)"></div>
+     <span>Backward rate <b id="rbv" style="float:right">—</b></span><div class="rbar" id="rbb" style="background:var(--bw)"></div></div>
+    <p style="font-size:12.5px;color:var(--muted)">Q = [NH₃]² / ([N₂][H₂]³), in L²/mol². Illustrative model: K is 0.5 at 700 K and follows ΔH = −92 kJ/mol; the catalyst speeds both directions × 5.</p>
+   </div>
+  </div>
+  <h3>Considerations and rationales</h3>
+  <div class="log scroll"><table><thead><tr><th>#</th><th>Consideration (C)</th><th>Rationale (R)</th></tr></thead><tbody id="log"></tbody></table></div>
+ </div>
+</section>
+</main>
+<script>
+(function(){
+"use strict";
+const DATA={"min_words": 4, "sections": [["basics", "Equilibrium basics"], ["kq", "K and Q"], ["shift", "Disturbing equilibrium"]], "cards": {"E1": {"s": "basics", "options": [{"t": "NH₃ breaks down into N₂ and H₂", "g": "partial", "why": "True, but only half the story: the N₂ and H₂ that form react back into NH₃ at the same time."}, {"t": "Nothing: NH₃ is the product, so it can't react", "g": "wrong", "why": "'Product' is just the label for the right-hand side. A reversible reaction runs from either side."}, {"t": "Some NH₃ breaks into N₂ and H₂, and as they form they start reacting back into NH₃", "g": "perfect", "why": "The backward reaction starts first, and the moment N₂ and H₂ exist, the forward reaction starts too."}], "ideas": [{"label": "NH₃ breaks down (the backward reaction)", "terms": ["break", "decompose", "split", "backward", "reverse", "n2 and h2", "nitrogen and hydrogen"]}, {"label": "the N₂ and H₂ formed react forward again", "terms": ["forward", "react back", "re-form", "reform", "recombine", "both directions", "both ways", "form nh3 again"]}], "wrong": [{"label": "products can react too; 'product' is just the right-hand side", "terms": ["can't react", "cannot react", "products don't react", "only goes forward"]}], "model": "NH₃ breaks down backward into N₂ and H₂, and as soon as some N₂ and H₂ exist they react forward to re-form NH₃, so both directions run at once."}, "E2": {"s": "basics", "options": [{"t": "The reaction goes forward and backward at the same time", "g": "perfect", "why": "That's what reversible means: both directions run together."}, {"t": "The reaction can go backward if you heat it", "g": "partial", "why": "Heating changes the balance, but the backward reaction runs all the time, not only when heated."}, {"t": "The amounts on both sides are equal", "g": "wrong", "why": "⇌ is about direction. It says nothing about the amounts being equal."}], "ideas": [{"label": "it goes in both directions (reversible)", "terms": ["forward and backward", "both directions", "both ways", "reversible", "two ways", "either direction"]}, {"label": "at the same time", "terms": ["same time", "simultaneous", "at once", "together", "concurrently"]}], "wrong": [{"label": "⇌ is about direction, not equal amounts", "terms": ["amounts are equal", "equal on both sides", "amounts on both sides are equal"]}], "model": "It means the reaction is reversible: it goes forward and backward at the same time."}, "E3": {"s": "basics", "options": [{"t": "When both reactions stop completely", "g": "wrong", "why": "They never stop. They keep running at equal rates."}, {"t": "When the forward rate becomes equal to the backward rate", "g": "perfect", "why": "Then each second as much NH₃ forms as breaks down, so nothing changes overall."}, {"t": "When the reaction slows down", "g": "partial", "why": "The forward reaction does slow, but the amounts only stop changing when it matches the backward rate exactly."}], "ideas": [{"label": "the forward and backward rates become equal", "terms": ["rates are equal", "equal rates", "rate equals", "same rate", "forward = backward", "forward equals backward", "rates become equal", "rates equal", "equal to the backward"]}, {"label": "why they meet: forward falls as reactants are used, backward rises as NH₃ builds up", "terms": ["used up", "fewer reactants", "less reactant", "more product", "builds up", "build up", "falls", "rises", "increases", "decreases"]}], "wrong": [{"label": "the reactions don't stop; they continue at equal rates", "terms": ["stops completely", "stop completely", "reaction stops", "both stop", "stop reacting"]}], "model": "When the forward rate equals the backward rate: the forward rate falls as N₂ and H₂ are used up, the backward rate rises as NH₃ builds up, and they meet."}, "E4": {"s": "basics", "options": [{"t": "Because equilibrium is dynamic", "g": "partial", "why": "Right word, but explain what it means: both reactions continue at equal rates."}, {"t": "Adding the label broke the equilibrium", "g": "wrong", "why": "The total amounts didn't change, so nothing was disturbed; the reactions were running all along."}, {"t": "Both reactions keep running, so labelled N₂ keeps turning into NH₃ and back", "g": "perfect", "why": "This is the evidence that equilibrium is dynamic, not stopped."}], "ideas": [{"label": "both reactions keep running (dynamic)", "terms": ["dynamic", "keep running", "still running", "continue", "still react", "never stop", "both reactions", "ongoing"]}, {"label": "at equal rates, so there is no net change", "terms": ["equal rate", "same rate", "no net", "amounts stay", "balance", "cancel", "as fast"]}], "wrong": [{"label": "the label didn't disturb anything; the totals stayed the same", "terms": ["broke the equilibrium", "broken the equilibrium", "broke equilibrium"]}], "model": "Equilibrium is dynamic: both reactions keep running at the same rate, so labelled N₂ keeps turning into NH₃ and back while the totals show no net change."}, "E5": {"s": "basics", "options": [{"t": "Yes: at equilibrium the amounts are constant, not equal", "g": "perfect", "why": "What is equal is the two rates; the amounts can be anything, as long as they stay steady."}, {"t": "Yes, because nothing is changing any more", "g": "partial", "why": "The amounts aren't changing, but the reactions still are. Say what's actually equal: the rates."}, {"t": "No: at equilibrium all the amounts must be equal", "g": "wrong", "why": "That's the classic misconception. Equilibrium means equal rates, not equal amounts."}], "ideas": [{"label": "the amounts are constant, not equal", "terms": ["constant", "not equal", "don't have to be equal", "needn't be equal", "unchanging", "stay the same", "steady"]}, {"label": "what is equal is the forward and backward rates", "terms": ["rate"]}], "wrong": [{"label": "equilibrium makes the rates equal, not the amounts", "terms": ["must be equal", "amounts are equal", "all equal"]}], "model": "Yes: at equilibrium the amounts stay constant but don't have to be equal; what is equal is the forward and backward rates."}, "E6": {"s": "basics", "options": [{"t": "Neither: equilibrium is always 50:50", "g": "wrong", "why": "Equilibrium has no fixed ratio. It depends on the reaction and the temperature."}, {"t": "Products: there is far more NH₃ than N₂ or H₂", "g": "perfect", "why": "At equilibrium the balance can lie well over to one side; here it's the product side."}, {"t": "Products, because it's at equilibrium", "g": "partial", "why": "Right side, wrong reason: being at equilibrium doesn't favour either side. The amounts tell you."}], "ideas": [{"label": "products (NH₃) are favoured", "terms": ["product", "nh3", "ammonia", "right"]}, {"label": "because there is much more of it", "terms": ["larger", "more", "bigger", "greater", "3.0", "far", "much"]}], "wrong": [{"label": "equilibrium has no fixed 50:50 ratio", "terms": ["50:50", "50/50", "half and half", "always equal"]}], "model": "Products are favoured: there is far more NH₃ (3.0) than N₂ (0.1) or H₂ (0.3)."}, "Q1": {"s": "kq", "options": [{"t": "K = [NH₃] / ([N₂][H₂])", "g": "partial", "why": "Right way up, but the powers are missing: 2 for NH₃ and 3 for H₂."}, {"t": "K = [N₂][H₂]³ / [NH₃]²", "g": "wrong", "why": "Upside down: products go on top, reactants underneath."}, {"t": "K = [NH₃]² / ([N₂][H₂]³)", "g": "perfect", "why": "Products over reactants, each raised to the power of its coefficient."}], "ideas": [{"label": "products over reactants", "terms": ["products over reactants", "product over reactant", "products on top", "nh3 on top", "numerator", "divided by"]}, {"label": "each raised to the power of its coefficient", "terms": ["power", "coefficient", "squared", "cubed", "^2", "^3", "exponent"]}], "wrong": [{"label": "products go on top, reactants underneath", "terms": ["reactants over products", "reactants on top"]}], "model": "K is products over reactants, each raised to the power of its coefficient: [NH₃]² on top and [N₂][H₂]³ underneath."}, "Q2": {"s": "kq", "options": [{"t": "Mostly products: a large K means the top of the fraction is much bigger", "g": "perfect", "why": "For K to be huge, the products on top must far outweigh the reactants underneath."}, {"t": "Mostly products, so the reaction is fast", "g": "partial", "why": "Right mixture, but K says nothing about speed. At 25 °C this reaction is actually extremely slow."}, {"t": "Mostly reactants", "g": "wrong", "why": "A large K means the balance lies on the product side."}], "ideas": [{"label": "the mixture is mostly products", "terms": ["product", "nh3", "ammonia", "right"]}, {"label": "because a large K means the top of the fraction is much bigger", "terms": ["large", "big", "much greater", "top", "numerator", "greater than 1", "> 1", "much more", "outweigh"]}], "wrong": [{"label": "K says where the balance lies, not how fast it gets there", "terms": ["fast", "quick", "speed"]}], "model": "Mostly products: a large K means the products on top of the fraction far outweigh the reactants underneath."}, "Q3": {"s": "kq", "options": [{"t": "Backward, because Q is smaller than K", "g": "wrong", "why": "Q below K means too few products, so the reaction goes forward to make more."}, {"t": "Forward: Q < K, so more products form until Q rises to K", "g": "perfect", "why": "Q too small means too few products for equilibrium, so the forward rate is faster."}, {"t": "Forward, because Q is small", "g": "partial", "why": "Right direction, but 'small' only counts compared with K. Q = 0.1 would go backward if K were 0.01."}], "ideas": [{"label": "Q is less than K", "terms": ["q < k", "less than k", "smaller than k", "0.1 < 0.5", "below k", "lower than k"]}, {"label": "so it goes forward until Q = K", "terms": ["forward", "more product", "until q = k", "rises", "increase"]}], "wrong": [{"label": "Q below K means too few products, so it goes forward, not backward", "terms": ["backward", "reverse"]}], "model": "Forward: Q (0.1) is less than K (0.5), so more products form and Q rises until it equals K."}, "Q4": {"s": "kq", "options": [{"t": "Yes, because the amounts aren't changing", "g": "partial", "why": "You can't tell that from one snapshot; calculating Q is what shows it."}, {"t": "No, because the amounts are not equal", "g": "wrong", "why": "Equilibrium never needs equal amounts. Q = K is the test."}, {"t": "Yes: Q = 0.5² / (1 × 1³) = 0.25, which equals K", "g": "perfect", "why": "Work out Q from the current amounts and compare it with K."}], "ideas": [{"label": "Q works out to 0.25", "terms": ["0.25", "0.5^2", "0.5 x 0.5", "0.5x0.5", "q ="]}, {"label": "which equals K", "terms": ["equals k", "= k", "same as k", "equal to k", "matches k"]}], "wrong": [{"label": "equilibrium doesn't need equal amounts", "terms": ["amounts are not equal", "amounts aren't equal", "not the same amount"]}], "model": "Yes: Q = 0.5² / (1 × 1³) = 0.25, which equals K, so the mixture is at equilibrium."}, "L1": {"s": "shift", "options": [{"t": "It shifts forward: more NH₃ forms, using up some of the added N₂", "g": "perfect", "why": "The system works against the change by using up some of what was added (Q fell below K)."}, {"t": "More NH₃ forms", "g": "partial", "why": "True, but say why: the shift uses up some of the added N₂, partly undoing the change."}, {"t": "It shifts backward to make even more N₂", "g": "wrong", "why": "That would make the change bigger. Equilibrium shifts to work against it."}], "ideas": [{"label": "it shifts forward, making more NH₃", "terms": ["forward", "right", "more nh3", "more ammonia", "more product"]}, {"label": "to use up some of the added N₂ (partly undoing the change)", "terms": ["use up", "uses up", "using up", "oppose", "counteract", "undo", "consume", "reduce"]}], "wrong": [{"label": "the system works against the change, so it doesn't make more N₂", "terms": ["more n2", "backward"]}], "model": "It shifts forward: more NH₃ forms, using up some of the added N₂, which partly undoes the change (Q fell below K)."}, "L2": {"s": "shift", "options": [{"t": "Backward, because the left side has more molecules to push back", "g": "wrong", "why": "The shift goes to the side with fewer gas molecules, which reduces the pressure."}, {"t": "Forward: the right side has fewer gas molecules (2 against 4)", "g": "perfect", "why": "Making NH₃ turns 4 gas molecules into 2, which lowers the pressure and partly undoes the squeeze."}, {"t": "Forward, because pressure speeds up reactions", "g": "partial", "why": "Right direction, wrong reason: it's about the number of gas molecules on each side."}], "ideas": [{"label": "the right side has fewer gas molecules (2 against 4)", "terms": ["fewer", "less gas", "2 vs 4", "2 versus 4", "2 against 4", "4 to 2", "less molecules"]}, {"label": "so it shifts forward, making NH₃", "terms": ["forward", "right", "nh3", "ammonia", "product"]}], "wrong": [{"label": "higher pressure favours the side with fewer gas molecules, not more", "terms": ["backward", "more molecules to push"]}], "model": "Forward: the right side has fewer gas molecules (2 against 4 on the left), so making NH₃ lowers the pressure and partly undoes the squeeze."}, "L3": {"s": "shift", "options": [{"t": "It shifts backward", "g": "partial", "why": "Right direction; also say why (backward absorbs heat) and that K itself gets smaller."}, {"t": "It shifts forward, because heat speeds up reactions", "g": "wrong", "why": "Heat speeds both directions, but it speeds the heat-absorbing one more: here, backward."}, {"t": "It shifts backward, absorbing heat: less NH₃, and K gets smaller", "g": "perfect", "why": "Heat acts like a product here, so raising T favours the backward reaction, and temperature is the one thing that changes K."}], "ideas": [{"label": "it shifts backward, the direction that absorbs heat", "terms": ["backward", "left", "absorb", "endothermic", "less nh3", "less ammonia"]}, {"label": "and K itself gets smaller", "terms": ["k decreases", "k gets smaller", "smaller k", "k falls", "k drops", "lower k", "k goes down", "k changes"]}], "wrong": [{"label": "raising the temperature favours the direction that absorbs heat, here backward", "terms": ["shifts forward", "more nh3", "more ammonia"]}], "model": "It shifts backward, the direction that absorbs heat, so there is less NH₃ and K gets smaller."}, "L4": {"s": "shift", "options": [{"t": "Nothing in the mixture: it speeds up both directions equally, so K and the amounts stay the same", "g": "perfect", "why": "A catalyst only shortens the time to reach equilibrium; it doesn't move it."}, {"t": "Equilibrium is reached faster", "g": "partial", "why": "True for a mixture not yet at equilibrium; this one already is, so nothing changes."}, {"t": "More NH₃ forms", "g": "wrong", "why": "A catalyst speeds both directions by the same factor, so the balance doesn't move."}], "ideas": [{"label": "it speeds up both directions equally", "terms": ["both directions", "both reactions", "equally", "forward and backward", "both ways", "same factor"]}, {"label": "so K and the amounts don't change", "terms": ["no change", "same", "unchanged", "doesn't change", "does not change", "not shift", "no shift"]}], "wrong": [{"label": "a catalyst doesn't shift the equilibrium, so it doesn't make more NH₃", "terms": ["more nh3", "more ammonia", "shifts forward", "increases k", "increases the yield"]}], "model": "Nothing in the mixture changes: a catalyst speeds up both directions equally, so K and the amounts stay the same; it only helps reach equilibrium sooner."}}};
+const GL={perfect:"Perfect",partial:"To some extent but not perfect",wrong:"Wrong answer"};
+const MINW=DATA.min_words||4,STORE="chem-eq-v1";
+let S={};try{S=JSON.parse(localStorage.getItem(STORE)||"{}")||{}}catch(e){S={}}
+const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id),SV="http://www.w3.org/2000/svg";
+function el(t,a,p){const e=document.createElementNS(SV,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+/* ---- justification grading ---- */
+const SUB={"₀":"0","₁":"1","₂":"2","₃":"3","₄":"4","₅":"5","₆":"6","₇":"7","₈":"8","₉":"9","²":"^2","³":"^3"};
+function nz(s){return String(s).toLowerCase().replace(/[₀-₉²³]/g,c=>SUB[c]).replace(/[×*]/g,"x").replace(/[−–—]/g,"-").replace(/→/g,"->").replace(/\b(times|multiplied by)\b/g," x ").replace(/(\d),(\d{3})/g,"$1$2").replace(/\s+/g," ").trim()}
+function hasTerm(text,t){const T=nz(t);
+ if(/^[a-z0-9]{1,3}$/.test(T))return new RegExp("(^|[^a-z0-9])"+T+"($|[^a-z0-9])").test(text);
+ if(/^[0-9.]+$/.test(T))return new RegExp("(^|[^0-9.])"+T.replace(/\./g,"\\.")+"($|[^0-9])").test(text);
+ return text.includes(T)||text.replace(/ /g,"").includes(T.replace(/ /g,""))}
+function judge(c,raw){const text=nz(raw||""),words=text.split(" ").filter(Boolean).length;
+ if(!text)return{g:"wrong",m:"Write a sentence or two explaining why."};
+ if(words<MINW)return{g:"wrong",m:`Too short: explain in at least ${MINW} words.`};
+ const mis=(c.wrong||[]).filter(w=>w.terms.some(t=>hasTerm(text,t)));
+ if(mis.length)return{g:"wrong",m:"This contains a mistake: "+mis.map(w=>w.label).join("; ")+"."};
+ const hit=c.ideas.filter(i=>i.terms.some(t=>hasTerm(text,t))),miss=c.ideas.filter(i=>!hit.includes(i));
+ if(!miss.length)return{g:"perfect",m:"You covered "+hit.map(i=>i.label).join(" and ")+"."};
+ if(hit.length)return{g:"partial",m:"You covered "+hit.map(i=>i.label).join(" and ")+". For a perfect answer, also explain "+miss.map(i=>i.label).join(", and ")+"."};
+ return{g:"wrong",m:"The key idea is missing. Explain "+miss.map(i=>i.label).join(", and ")+"."}}
+const pill=g=>`<span class="pill g-${g}">${GL[g]}</span>`;
+function paint(card){const id=card.dataset.id,c=DATA.cards[id],st=S[id]||{};
+ card.querySelectorAll(".opt").forEach(b=>{const i=+b.dataset.i,o=c.options[i];b.className="opt";const t=b.querySelector(".tag");if(t)t.remove();
+  if(st.o===i){b.classList.add("sel","g-"+o.g);b.insertAdjacentHTML("beforeend",`<span class="tag">${pill(o.g)}</span>`)}
+  b.setAttribute("aria-pressed",st.o===i)});
+ card.querySelector(".ofb").innerHTML=st.o!=null?`<div class="fbline">${pill(c.options[st.o].g)}<span>${c.options[st.o].why}</span></div>`:"";
+ const jf=card.querySelector(".jfb");jf.innerHTML=st.jg?`<div class="fbline">${pill(st.jg)}<span>${st.jm}</span></div>`:"";
+ if(st.show)jf.insertAdjacentHTML("beforeend",`<div class="fbline" style="margin-top:6px"><span class="pill g-perfect">Perfect answer</span><span>${c.model}</span></div>`)}
+document.querySelectorAll(".cc").forEach(card=>{const id=card.dataset.id,c=DATA.cards[id],ta=card.querySelector("textarea");
+ ta.value=(S[id]||{}).j||"";
+ card.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{S[id]=Object.assign({},S[id],{o:+b.dataset.i});save();paint(card);score()});
+ card.querySelector(".jchk").onclick=()=>{const r=judge(c,ta.value);S[id]=Object.assign({},S[id],{j:ta.value,jg:r.g,jm:r.m});save();paint(card);score()};
+ card.querySelector(".jmodel").onclick=()=>{S[id]=Object.assign({},S[id],{show:!(S[id]||{}).show});save();paint(card)};
+ paint(card)});
+function score(){let tp=0,tt=0;
+ $("prog").innerHTML=DATA.sections.map(([key,nm])=>{const ids=Object.keys(DATA.cards).filter(k=>DATA.cards[k].s===key);
+  const picked=ids.filter(k=>S[k]&&S[k].o!=null).length,op=ids.filter(k=>S[k]&&S[k].o!=null&&DATA.cards[k].options[S[k].o].g==="perfect").length;
+  const jp=ids.filter(k=>S[k]&&S[k].jg==="perfect").length,jpa=ids.filter(k=>S[k]&&S[k].jg==="partial").length;tp+=op+jp;tt+=2*ids.length;
+  return `<tr><td>${nm}</td><td class="num">${ids.length}</td><td class="num">${picked}</td><td class="num">${op}</td><td class="num">${jp}</td><td class="num">${jpa}</td></tr>`}).join("");
+ $("score").textContent=`${tp} of ${tt} perfect`}
+$("reset").onclick=()=>{S={};save();document.querySelectorAll(".cc").forEach(c=>{c.querySelector("textarea").value="";paint(c)});score()};
+score();
+
+/* ---- playground: N2 + 3H2 <=> 2NH3, mass-action kinetics ---- */
+const R=8.314,DH=-92000,EA=60000,T0=700,K0=0.5,KF0=0.02,NM=["N₂","H₂","NH₃"];
+let x,T,cat,t,hist,evs,logN,eqState,running=true,lastShift;
+const K=()=>K0*Math.exp(-DH/R*(1/T-1/T0));
+const kf=()=>KF0*Math.exp(-EA/R*(1/T-1/T0))*(cat?5:1);
+const kb=()=>kf()/K();
+const Q=()=>{const d=x[0]*Math.pow(x[1],3);return d<=0?(x[2]>0?Infinity:NaN):x[2]*x[2]/d};
+const f3=v=>!isFinite(v)?(isNaN(v)?"—":"∞"):v===0?"0":Math.abs(v)>=1000||Math.abs(v)<0.01?v.toExponential(2).replace("e+","e"):(+v.toPrecision(3)).toString();
+function log(c,r,k){logN++;const tr=document.createElement("tr");tr.innerHTML=`<td class="num">${logN}</td><td class="c">C${logN} · ${c}</td><td class="k-${k||"key"}">R${logN} · ${r}</td>`;
+ const b=$("log");b.insertBefore(tr,b.firstChild);b.querySelectorAll("tr.now").forEach(e=>e.classList.remove("now"));tr.classList.add("now")}
+function dirText(q,k){if(!isFinite(q))return["Q is infinite (a reactant is missing)","Only the backward reaction can run: it shifts backward until Q = K","no"];
+ const r=q/k;if(Math.abs(Math.log(r))<0.02)return["Q still equals K","No shift: the mixture stays at equilibrium","no"];
+ return r<1?[`Q = ${f3(q)} < K = ${f3(k)}`,"Too few products for K, so the forward rate is now faster: it shifts forward until Q = K","up"]
+           :[`Q = ${f3(q)} > K = ${f3(k)}`,"Too many products for K, so the backward rate is now faster: it shifts backward until Q = K","no"]}
+function reset(){x=[1,3,0];T=700;cat=false;t=0;hist=[];evs=[];logN=0;eqState=false;$("log").innerHTML="";$("cat").textContent="Add catalyst";$("cat").setAttribute("aria-pressed","false");
+ log("Start: 1 mol/L N₂ and 3 mol/L H₂ at 700 K, no NH₃","Q = 0 < K = 0.5, so only the forward reaction runs at first; the backward rate grows as NH₃ forms","up");ui()}
+function change(c,extra){evs.push(t);const q=Q(),k=K(),[qc,qr,kind]=dirText(q,k);eqState=Math.abs(Math.log(q/k))<0.02;
+ log(c+`. Now ${qc}`,(extra?extra+". ":"")+qr,kind);ui()}
+document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{const i=+b.dataset.add;x[i]+=0.5;
+ change(`Added 0.5 mol/L ${NM[i]}`,i<2?`Le Chatelier: it works to use up some of the added ${NM[i]}`:"Le Chatelier: it works to use up some of the added NH₃")});
+document.querySelector("[data-rem]").onclick=()=>{x[2]/=2;change("Removed half the NH₃","Le Chatelier: it makes more NH₃ to partly replace what was removed (how industry raises the yield)")};
+$("psq").onclick=()=>{if(Math.max(...x)>12)return;const q0=Q();x=x.map(v=>v*2);change(`Volume halved: every concentration doubles, so Q falls from ${f3(q0)} to ${f3(Q())} (Q ÷ 4)`,"It shifts toward fewer gas molecules: 2 NH₃ against 4 reactant molecules")};
+$("pex").onclick=()=>{if(Math.max(...x)<0.05)return;const q0=Q();x=x.map(v=>v/2);change(`Volume doubled: every concentration halves, so Q rises from ${f3(q0)} to ${f3(Q())} (Q × 4)`,"It shifts toward more gas molecules: 4 reactant molecules against 2 NH₃")};
+function setT(nt){if(nt<400||nt>1000)return;const k0=K();const up=nt>T;T=nt;
+ change(`Temperature ${up?"raised":"lowered"} to ${T} K: K changes from ${f3(k0)} to ${f3(K())}`,up?"The forward reaction gives out heat, so heating favours the backward (heat-absorbing) direction: K falls, and Q is left above it":"Cooling favours the forward (heat-releasing) direction: K rises, and Q is left below it")}
+$("tup").onclick=()=>setT(T+100);$("tdn").onclick=()=>setT(T-100);
+$("cat").onclick=()=>{cat=!cat;$("cat").textContent=cat?"Remove catalyst":"Add catalyst";$("cat").setAttribute("aria-pressed",String(cat));
+ change(cat?"Catalyst added: forward and backward rate constants both × 5":"Catalyst removed: both rate constants ÷ 5",`K stays ${f3(K())}: a catalyst changes both directions by the same factor, so it only changes how fast equilibrium is reached`)};
+$("rst").onclick=reset;
+$("run").onclick=()=>{running=!running;$("run").textContent=running?"❚❚ Pause":"▶ Run"};
+function step(simdt){let left=simdt;
+ for(let n=0;n<4000&&left>1e-9;n++){const a=kf(),b=kb();
+  const J=a*(Math.pow(x[1],3)+9*x[0]*x[1]*x[1])+4*b*x[2]+1e-6,dt=Math.min(left,0.15/J);
+  let d=(a*x[0]*Math.pow(x[1],3)-b*x[2]*x[2])*dt;
+  if(d>0)d=Math.min(d,x[0]*0.5,x[1]/3*0.5);else d=Math.max(d,-x[2]/2*0.5);
+  x[0]-=d;x[1]-=3*d;x[2]+=2*d;left-=dt}
+ t+=simdt}
+function ui(){const q=Q(),k=K(),rf=kf()*x[0]*Math.pow(x[1],3),rb=kb()*x[2]*x[2];
+ $("conc").textContent=x.map(f3).join(" · ");$("qv").textContent=f3(q);$("kv").textContent=f3(k);$("tval").textContent=T+" K";
+ $("rfv").textContent=f3(rf);$("rbv").textContent=f3(rb);const m=Math.max(rf,rb,1e-9);
+ $("rfb").style.width=(100*rf/m)+"%";$("rbb").style.width=(100*rb/m)+"%";
+ const r=Math.log(q/k),st=$("status");
+ if(!isFinite(r)||Math.abs(r)>=0.02){const f=!isFinite(q)?false:r<0;st.className="status "+(f?"st-f":"st-b");st.textContent=f?"Q < K: forward rate faster, shifting forward →":"Q > K: backward rate faster, shifting backward ←"}
+ else{st.className="status st-e";st.textContent="Q = K: forward rate = backward rate, at equilibrium (both still running)"}
+ if(!eqState&&isFinite(r)&&Math.abs(r)<0.02){eqState=true;log(`Forward rate = backward rate (${f3(rf)} mol/L/s each)`,`Q = K = ${f3(k)}: equilibrium again. Amounts now steady at ${x.map(f3).join(" · ")} mol/L, but both reactions keep running`,"key")}
+ draw()}
+function draw(){const svg=$("chart");svg.innerHTML="";const W=600,H=300,L=44,B=270,Tp=14,Rt=590,span=30,t1=Math.max(t,span),t0=t1-span;
+ const pts=hist.filter(h=>h[0]>=t0);const ym=Math.max(1,...pts.map(h=>Math.max(h[1],h[2],h[3])))*1.1;
+ for(let i=0;i<=4;i++){const v=ym*i/4,y=B-(B-Tp)*i/4;el("line",{x1:L,y1:y,x2:Rt,y2:y,class:"gl"},svg);el("text",{x:L-6,y:y+3,"text-anchor":"end",class:"gt"},svg).textContent=(+v.toPrecision(2))}
+ el("text",{x:Rt,y:B+20,"text-anchor":"end",class:"gt"},svg).textContent="time (s) →";
+ const X=tt=>L+(Rt-L)*(tt-t0)/span,Y=v=>B-(B-Tp)*v/ym;
+ evs.filter(e=>e>=t0).forEach(e=>el("line",{x1:X(e),y1:Tp,x2:X(e),y2:B,class:"ev"},svg));
+ [0,1,2].forEach(i=>{if(pts.length<2)return;el("polyline",{points:pts.map(h=>X(h[0]).toFixed(1)+","+Y(h[i+1]).toFixed(1)).join(" "),class:"ln l"+i},svg)})}
+let last=0;
+function frame(ts){if(running&&document.visibilityState!=="hidden"&&document.getElementById("v-playground").classList.contains("on")){
+  if(ts-last>40){last=ts;step(0.12);hist.push([t,x[0],x[1],x[2]]);if(hist.length>1200)hist.splice(0,hist.length-1200);ui()}}
+ requestAnimationFrame(frame)}
+reset();requestAnimationFrame(frame);
+window.__sim={step:n=>{for(let i=0;i<n;i++){step(0.12);hist.push([t,x[0],x[1],x[2]])}ui()},state:()=>({x:[...x],Q:Q(),K:K(),T,cat})};
+/* ---- routing ---- */
+const VIEWS=["start", "kernel", "basics", "kq", "shift", "playground"];
+function rt(){let v=location.hash.slice(1);if(!VIEWS.includes(v)){const c=document.getElementById(v);v=c&&c.closest("section")?c.closest("section").id.slice(2):"start"}
+ document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===v));window.scrollTo(0,0)}
+window.addEventListener("hashchange",rt);rt();
+})();
+</script>
+</body>
+</html>

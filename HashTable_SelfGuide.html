@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.classList.add("js")</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hash Table Self-Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+
+/* Layout: fixed step rail on the left, one step view at a time on the right; trees drawn live in SVG (x = sorted rank, y = level). */
+:root{
+  --bg:#F4F6F8; --panel:#FFFFFF; --ink:#16212E; --muted:#5B6878; --line:#D7DEE6;
+  --accent:#0B7A83; --accent-soft:#DDF0F1; --warm:#C26A12; --warm-soft:#FBEBD8;
+  --ok:#1E7B45; --ok-soft:#DCF1E3; --bad:#B3362B; --bad-soft:#F8DEDB;
+  --edge:#8796A8;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F151C; --panel:#17202A; --ink:#E6ECF2; --muted:#9AA8B8; --line:#2A3644;
+  --accent:#3FB8C1; --accent-soft:#16363A; --warm:#F0A04B; --warm-soft:#3A2A17;
+  --ok:#5CCB86; --ok-soft:#173526; --bad:#F07F73; --bad-soft:#3D1F1C; --edge:#6E7E91; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F151C; --panel:#17202A; --ink:#E6ECF2; --muted:#9AA8B8; --line:#2A3644;
+  --accent:#3FB8C1; --accent-soft:#16363A; --warm:#F0A04B; --warm-soft:#3A2A17;
+  --ok:#5CCB86; --ok-soft:#173526; --bad:#F07F73; --bad-soft:#3D1F1C; --edge:#6E7E91; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:30px} h2{font-size:24px} h3{font-size:16px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100%}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
+nav .brand{font-family:var(--display);font-size:17px;font-weight:700;padding:0 8px 14px}
+nav .brand small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14px}
+nav a:hover{background:var(--bg)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:11px;font-family:var(--mono);flex:none}
+nav .dot.done{background:var(--ok);border-color:var(--ok);color:#fff}
+nav .dot.part{border-color:var(--warm);color:var(--warm)}
+nav .meter{margin:16px 8px 0;font-size:12px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+main{padding:28px clamp(16px,4vw,44px) 60px;max-width:1120px;min-width:0}
+section.view{display:flex;flex-direction:column;gap:18px;margin-bottom:28px}
+
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.kq{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;padding:12px 16px;font-style:italic}
+.kq b{font-style:normal;display:block;font-size:12px;font-family:var(--mono);color:var(--accent);margin-bottom:2px;text-transform:uppercase}
+.kcheck{border-left:4px solid var(--bad);background:var(--bad-soft);border-radius:0 10px 10px 0;padding:12px 16px}
+.kcheck b{color:var(--bad)}
+.kcheck.good{border-color:var(--ok);background:var(--ok-soft)} .kcheck.good b{color:var(--ok)}
+.terms{display:grid;gap:8px;margin:0;padding:0;list-style:none;max-width:74ch}
+.terms li{padding-left:16px;position:relative}
+.terms li::before{content:"";position:absolute;left:0;top:.65em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.term{font-weight:600}
+.lab{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(220px,1fr);gap:18px;align-items:start}
+.lab.wide{grid-template-columns:1fr}
+.treebox{background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+.treebox svg{display:block;width:100%;height:auto;min-width:520px}
+.treebox.big svg{min-width:900px}
+.readout{display:flex;flex-direction:column;gap:9px}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-radius:8px;background:var(--bg);font-size:14px}
+.stat b{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.stat.hl{background:var(--accent-soft)} .stat.hl b{color:var(--accent)}
+.stat.yes b{color:var(--ok)} .stat.no b{color:var(--bad)}
+.hint-line{font-size:13px;color:var(--muted);margin:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:var(--panel);padding:7px 12px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=number],input[type=text],select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px}
+input[type=range]{accent-color:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.chips{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:12.5px}
+.chips span{padding:2px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+.chips span.cur{background:var(--accent);border-color:var(--accent);color:#fff}
+.chips span.vis{background:var(--accent-soft);border-color:var(--accent)}
+.qs{display:flex;flex-direction:column;gap:12px}
+.q{border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:10px;background:var(--panel)}
+.q.ok{border-color:var(--ok);background:var(--ok-soft)}
+.q.bad{border-color:var(--bad);background:var(--bad-soft)}
+.q.part{border-color:var(--warm);background:var(--warm-soft)}
+.q .p{font-weight:500}
+.q .p span{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.q .ans{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.q .ans input{width:130px}
+.choice{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer}
+.choice.sel{border-color:var(--ink);font-weight:600}
+.fb{font-size:14px;display:grid;gap:4px}
+.fb b{margin-right:6px} .fb b.g{color:var(--ok)} .fb b.r{color:var(--bad)} .fb b.a{color:var(--warm)}
+.why{font-size:13px;font-weight:600;color:var(--muted)}
+.q textarea{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;width:100%;resize:vertical;font:inherit;color:inherit}
+.next{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.pill.done{background:var(--ok-soft);color:var(--ok)} .pill.part{background:var(--warm-soft);color:var(--warm)} .pill.none{background:var(--bg);color:var(--muted)}
+.callout{font-family:var(--display);font-size:19px;color:var(--accent);margin:0}
+/* svg tree */
+.e{stroke:var(--edge);stroke-width:1.6;fill:none}
+.e.hot{stroke:var(--warm);stroke-width:3}
+.n rect{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+.n text{fill:var(--ink);font-family:var(--mono);font-size:12px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.n.click{cursor:pointer}
+.n.sel rect,.n.cur rect{fill:var(--accent);stroke:var(--accent)} .n.sel text,.n.cur text{fill:#fff}
+.n.vis rect{fill:var(--accent-soft);stroke:var(--accent)}
+.n.bad rect{fill:var(--bad-soft);stroke:var(--bad);stroke-width:2.2}
+.n.new rect{fill:var(--warm-soft);stroke:var(--warm)}
+.n.leaf rect{stroke-dasharray:3 2}
+.n.dim{opacity:.4}
+.bdg circle{fill:var(--warm)} .bdg text{fill:#fff;font-family:var(--body);font-size:9.5px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.lvl{font-family:var(--body);font-size:10.5px;fill:var(--muted)}
+.cvgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+.fcbox{display:flex;justify-content:center}
+.codebox{font-family:var(--mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 0;overflow-x:auto}
+.cl{display:grid;grid-template-columns:26px 1fr;gap:6px;padding:2px 10px;border-left:3px solid transparent;white-space:pre}
+.cl span{color:var(--muted);text-align:right}
+.cl code{font-family:inherit}
+.cl.ran{background:var(--accent-soft)}
+.cl.now{background:var(--warm-soft);border-left-color:var(--warm);font-weight:600}
+#cvfc{width:auto;max-width:none}
+.fe{fill:none;stroke:var(--edge);stroke-width:1.5}
+.fe.hot{stroke:var(--warm);stroke-width:3}
+.fe.past{stroke:var(--warm);stroke-opacity:.35;stroke-dasharray:5 4;stroke-width:2}
+.fyn{font-family:var(--body);font-size:10.5px;fill:var(--muted);font-weight:600}
+.flab{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1}
+.flabt{font-family:var(--mono);font-size:11px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.fn rect,.fn polygon{fill:var(--panel);stroke:var(--ink);stroke-width:1.4}
+.fn.term rect{fill:var(--bg)}
+.fn.vis rect,.fn.vis polygon{fill:var(--accent-soft);stroke:var(--accent)}
+.fn.cur rect,.fn.cur polygon{fill:var(--accent);stroke:var(--accent)}
+.fn text{font-family:var(--mono);font-size:11.5px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.fn.cur text{fill:#fff;font-weight:600}
+td.mono{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+tr.now td{background:var(--warm-soft)}
+code{font-family:var(--mono);font-size:.92em}
+@media (max-width:1000px){.cvgrid{grid-template-columns:1fr}}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}
+  nav .brand,nav .meter{width:100%}
+  .lab{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---- iOS / no-JavaScript support ---- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a,input,select,textarea,label,.choice,.n,.lbox,.fn,[role=button]{touch-action:manipulation;-webkit-tap-highlight-color:rgba(11,122,131,.18)}
+.js section.view{display:none}
+.js section.view.on{display:flex}
+#nojs{display:block;margin:0 0 18px;padding:14px 16px;border-radius:10px;border:2px solid var(--warm);background:var(--warm-soft);color:var(--ink);font-size:15px;line-height:1.5}
+#nojs b{display:block;font-size:16px;margin-bottom:4px}
+.js #nojs{display:none}
+main,.card,.readout,.cvgrid>*,.lab>*{min-width:0}
+@media (max-width:860px){nav{position:sticky;top:0;z-index:5;flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:8px 10px}
+ nav::-webkit-scrollbar{display:none} nav a{white-space:nowrap;flex:none} nav .brand,nav .meter{display:none}}
+.fcbox{display:block}.fcbox svg{display:block;margin:0 auto}
+@media (max-width:1000px){.cvgrid{grid-template-columns:minmax(0,1fr)!important}}
+@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.lab{grid-template-columns:minmax(0,1fr)!important}}
+@media (max-width:860px){input,select,textarea{font-size:16px!important}
+ nav{padding:12px 10px;gap:2px} nav a{padding:7px 8px;font-size:13px} nav .brand{padding-bottom:6px}
+ main{padding:20px 14px 48px} .card{padding:14px} h1{font-size:26px} h2{font-size:21px}}
+
+/* list / hash diagrams */
+.lbox rect{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+.lbox text{font-family:var(--mono);font-size:12px;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.lbox .sub{font-size:9.5px;fill:var(--muted)}
+.lbox.click{cursor:pointer}
+.lbox.sel rect,.lbox.cur rect{fill:var(--accent);stroke:var(--accent)} .lbox.sel text,.lbox.cur text{fill:#fff}
+.lbox.vis rect{fill:var(--accent-soft);stroke:var(--accent)}
+.lbox.new rect{fill:var(--warm-soft);stroke:var(--warm)}
+.lbox.cut{opacity:.35}
+.lbox.prev rect{stroke:var(--accent);stroke-width:2.4;stroke-dasharray:4 2}
+.ln{stroke:var(--edge);stroke-width:1.6;fill:none}
+.ln.hot{stroke:var(--warm);stroke-width:3}
+.ln.dead{stroke-dasharray:3 3;opacity:.4}
+.ptr{font-family:var(--body);font-size:11px;font-weight:700}
+.nul{font-family:var(--mono);font-size:11px;font-weight:600;fill:var(--bad);dominant-baseline:central}
+.bidx rect{fill:var(--bg);stroke:var(--ink);stroke-width:1.2}
+.bidx text{font-family:var(--mono);font-size:12px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.bidx.hl rect{fill:var(--warm-soft);stroke:var(--warm);stroke-width:2}
+.calc{font-family:var(--mono);font-size:13px;fill:var(--ink)}
+</style>
+</head>
+<body>
+<div class="app">
+<nav id="nav">
+  <div class="brand">Hash Table<small>Self-guide built from your learning kernel</small></div>
+  <a href="#start" data-v="start"><span class="dot">⌂</span>Start here</a>
+  <a href="#kernel" data-v="kernel"><span class="dot">K</span>Kernel &amp; checks</a>
+  <a href="#step-1" data-v="step-1"><span class="dot" id="d1">1</span><span class="sn" data-i="0">Hashing a key to a bucket</span></a>
+  <a href="#step-2" data-v="step-2"><span class="dot" id="d2">2</span><span class="sn" data-i="1">Collisions and chaining</span></a>
+  <a href="#step-3" data-v="step-3"><span class="dot" id="d3">3</span><span class="sn" data-i="2">Looking a key up</span></a>
+  <a href="#step-4" data-v="step-4"><span class="dot" id="d4">4</span><span class="sn" data-i="3">Load factor and resizing</span></a>
+  <a href="#code" data-v="code"><span class="dot">{ }</span>Code &amp; flowchart</a>
+  <a href="#playground" data-v="playground"><span class="dot">✎</span>Playground</a>
+  <div class="meter"><span id="navmeter">0 complete</span><div class="bar"><i id="navbar" style="width:0%"></i></div></div>
+</nav>
+<main>
+<div id="nojs" role="note"><b>This preview can't run the interactive parts.</b>You're seeing a read-only view, probably the iPhone/iPad file preview (Quick Look) or WhatsApp's viewer, which don't run JavaScript. To use the diagrams, questions and flowcharts, open the online link in Safari, or open this file in an app that runs web pages (see the note that came with it). The text below is still readable.</div>
+
+<section class="view" id="v-start">
+  <div class="eyebrow">Self-guided tool</div>
+  <h1>Learn hash tables in four steps</h1>
+  <p style="max-width:72ch;margin:0">A hash table of roll numbers 10, 22, 31, 4, 15, 28, 17 in m = 7 buckets: each bucket is a small linked list, so this builds directly on the linked list kits. Each step takes one kernel statement, explains it, gives you a live table to explore, then asks questions. Every answer needs a short reason, graded ★ Perfect (every key idea), ✓ Right but not perfect (some of them) or ✗ Wrong. A question is complete with a correct answer and reasoning that is at least right.</p>
+  <div class="card">
+    <h3>Your progress</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Step</th><th class="num">Questions</th><th class="num">Complete</th><th class="num">★ Perfect</th><th>Status</th></tr></thead>
+      <tbody id="ptable"></tbody>
+      <tfoot><tr><th>Overall</th><th class="num" id="ptot"></th><th class="num" id="pcor">0</th><th class="num" id="pperf">0</th><th id="ppct">0%</th></tr></tfoot>
+    </table></div>
+    <p class="callout" id="nextcall"></p>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--accent)"></i>Selected / current</span>
+    <span><i style="background:var(--accent-soft);border:1px solid var(--accent)"></i>Visited / on the path</span>
+    <span><i style="background:var(--warm-soft);border:1px solid var(--warm)"></i>New</span>
+    <span><i style="background:var(--warm)"></i>Link just changed / path taken</span>
+    <span><i style="background:var(--ok)"></i>Answer correct, reasoning ★ perfect</span>
+  </div>
+  <div class="row"><a class="btn primary" href="#step-1" style="text-decoration:none">Begin with step 1</a><button class="btn" id="reset">Clear my answers</button></div>
+</section>
+<section class="view" id="v-kernel">
+  <div class="eyebrow">Source</div>
+  <h2>The learning kernel and its checks</h2>
+  <p style="margin:0;max-width:70ch">These are the statements in HashTableLearningKernel.xlsx, in order. Each becomes a step. Where a statement needs a qualifier, the check says so and the step teaches the qualified version.</p>
+  <div class="card scroll"><table><thead><tr><th>#</th><th>Kernel statement</th><th>Check</th></tr></thead><tbody id="ktable"><tr><td>1</td><td>A hash table stores keys in an array of m buckets, and a hash function turns each key into a bucket index: index = key mod m</td><td>Accurate for integer keys with the division method. Real tables use stronger hash functions (and convert strings to numbers first); a prime m spreads keys more evenly.</td></tr><tr><td>2</td><td>Two different keys can land in the same bucket, which is a collision; with chaining each bucket keeps a linked list of its keys</td><td>Accurate. Chaining is one way to handle collisions; open addressing (probing for the next free slot) is the other.</td></tr><tr><td>3</td><td>To look up a key, compute its index and walk only that bucket&#x27;s chain, comparing keys until a match or NULL</td><td>Accurate. Average cost is about 1 + n/m comparisons; the worst case, when every key lands in one bucket, is n.</td></tr><tr><td>4</td><td>The load factor n / m measures how full the table is; when it passes a limit such as 0.75 the table is resized (m doubled) and every key is rehashed</td><td>Accurate. 0.75 is a common limit (Java&#x27;s HashMap uses it). Resizing costs O(n) once, but spread over many inserts it averages O(1) each.</td></tr></tbody></table></div>
+</section>
+<section class="view" id="v-step-1">
+  <div class="eyebrow">Step 1 of 4</div>
+  <h2>Hashing: from key to bucket</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="0">“A hash table stores keys in an array of m buckets, and a hash function turns each key into a bucket index: index = key mod m”</span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="0">Accurate for integer keys with the division method. Real tables use stronger hash functions (and convert strings to numbers first); a prime m spreads keys more evenly.</span></div>
+  <ul class="terms"><li>The table is an array of <span class="term">m buckets</span>, numbered 0 to m − 1.</li><li>The <span class="term">hash function</span> here is index = key <span class="term">mod</span> m: the remainder after dividing by m. It always gives a number from 0 to m − 1.</li><li>Computing the index takes one step however many keys are stored. That is why hash tables are fast.</li></ul>
+  <div class="card"><div class="row"><label for="ht1k">Key</label><input type="number" id="ht1k" value="31" style="width:100px"><label for="ht1m">m</label><select id="ht1m"><option>5</option><option selected>7</option><option>10</option><option>11</option></select></div><div class="lab"><div class="treebox"><svg id="ht1" role="img" aria-label="Buckets"></svg></div><div class="readout"><div class="stat hl"><span>Index</span><b id="ht1i"></b></div><div class="scroll"><table><thead><tr><th>Example key</th><th class="num">key mod m</th></tr></thead><tbody id="ht1tab"></tbody></table></div></div></div></div>
+  <div class="qs" data-step="1"></div>
+  <div class="next"><a class="btn" href="#kernel">Back</a><a class="btn primary" href="#step-2">Next: collisions and chaining</a></div>
+</section>
+<section class="view" id="v-step-2">
+  <div class="eyebrow">Step 2 of 4</div>
+  <h2>Collisions and chaining</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="1">“Two different keys can land in the same bucket, which is a collision; with chaining each bucket keeps a linked list of its keys”</span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="1">Accurate. Chaining is one way to handle collisions; open addressing (probing for the next free slot) is the other.</span></div>
+  <ul class="terms"><li>A <span class="term">collision</span> happens when two different keys get the same index: 10 and 31 both give 3 with m = 7.</li><li>With <span class="term">chaining</span> each bucket holds a linked list. A new key is appended to the end of its bucket's chain after checking it isn't already there.</li><li>Resizing is switched off on this step so the collisions stay visible.</li></ul>
+  <div class="card"><div class="row"><label for="ht2k">Keys inserted: <b id="ht2kv">0</b> of 7</label><input type="range" id="ht2k" min="0" max="7" value="3" style="flex:1"></div><p class="callout" id="ht2msg" style="font-size:16px"></p><div class="treebox"><svg id="ht2" role="img" aria-label="Table after these inserts"></svg></div><div class="row" style="align-items:stretch"><div class="stat hl" style="flex:1"><span>Collisions so far</span><b id="ht2c"></b></div><div class="stat" style="flex:1"><span>Longest chain</span><b id="ht2l"></b></div><div class="stat" style="flex:1"><span>Empty buckets</span><b id="ht2e"></b></div></div></div>
+  <div class="qs" data-step="2"></div>
+  <div class="next"><a class="btn" href="#step-1">Back</a><a class="btn primary" href="#step-3">Next: looking a key up</a></div>
+</section>
+<section class="view" id="v-step-3">
+  <div class="eyebrow">Step 3 of 4</div>
+  <h2>Looking a key up: one bucket, one short walk</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="2">“To look up a key, compute its index and walk only that bucket&#x27;s chain, comparing keys until a match or NULL”</span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="2">Accurate. Average cost is about 1 + n/m comparisons; the worst case, when every key lands in one bucket, is n.</span></div>
+  <ul class="terms"><li>To find a key, compute its index, then walk <span class="term">only that bucket's chain</span>, comparing keys.</li><li>The walk stops at a <span class="term">match</span> (found) or at <span class="term">NULL</span> (not in the table). Other buckets are never touched.</li><li>Comparisons = position in the chain, so short chains mean fast lookups.</li></ul>
+  <div class="card"><div class="row"><label for="ht3k">Look up key</label><input type="number" id="ht3k" value="17" style="width:100px"><button class="btn primary" id="ht3go">Look up</button></div><div class="treebox"><svg id="ht3" role="img" aria-label="Lookup path"></svg></div><div class="row" style="align-items:stretch"><div class="stat" style="flex:1"><span>Bucket</span><b id="ht3b"></b></div><div class="stat hl" style="flex:1"><span>Comparisons</span><b id="ht3c"></b></div><div class="stat" style="flex:2"><span>Result</span><b id="ht3r"></b></div></div></div>
+  <div class="qs" data-step="3"></div>
+  <div class="next"><a class="btn" href="#step-2">Back</a><a class="btn primary" href="#step-4">Next: load factor and resizing</a></div>
+</section>
+<section class="view" id="v-step-4">
+  <div class="eyebrow">Step 4 of 4</div>
+  <h2>Load factor and resizing</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="3">“The load factor n / m measures how full the table is; when it passes a limit such as 0.75 the table is resized (m doubled) and every key is rehashed”</span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="3">Accurate. 0.75 is a common limit (Java&#x27;s HashMap uses it). Resizing costs O(n) once, but spread over many inserts it averages O(1) each.</span></div>
+  <ul class="terms"><li>The <span class="term">load factor</span> α = n / m is the average chain length.</li><li>When α goes over the limit (here 0.75), the table <span class="term">resizes</span>: m doubles and every key is <span class="term">rehashed</span> with the new m, so most keys move.</li><li>A resize is expensive once, but it keeps chains short for all later lookups.</li></ul>
+  <div class="card"><div class="row"><label for="ht4n">Keys inserted: <b id="ht4nv">0</b></label><input type="range" id="ht4n" min="0" max="12" value="6" style="flex:1"><label for="ht4m">Start m</label><select id="ht4m"><option>4</option><option selected>7</option><option>8</option></select><label><input type="checkbox" id="ht4auto" checked> Resize over 0.75</label></div><p class="callout" id="ht4msg" style="font-size:16px"></p><div class="treebox"><svg id="ht4" role="img" aria-label="Table with load factor"></svg></div><div class="row" style="align-items:stretch"><div class="stat" style="flex:1"><span>n</span><b id="ht4sn"></b></div><div class="stat" style="flex:1"><span>m</span><b id="ht4sm"></b></div><div class="stat hl" style="flex:1"><span>α = n / m</span><b id="ht4a"></b></div><div class="stat" style="flex:1"><span>Resizes</span><b id="ht4r"></b></div><div class="stat" style="flex:1"><span>Longest chain</span><b id="ht4l"></b></div></div><p class="hint-line">Keys arrive in this order: 10, 22, 31, 4, 15, 28, 17, 3, 45, 12, 26, 39.</p></div>
+  <div class="qs" data-step="4"></div>
+  <div class="next"><a class="btn" href="#step-3">Back</a><a class="btn primary" href="#code">Next: code & flowchart</a></div>
+</section>
+<section class="view" id="v-code">
+  <div class="eyebrow">Code &amp; flowchart</div>
+  <h2>Watch the code run: flowchart, values and conditions</h2>
+  <p style="margin:0;max-width:74ch">Pick an operation and step through it. The highlighted line is the code being run. In the flowchart, orange arrows are the path taken in the current loop, each labelled with the condition checked and the actual values; faded arrows were taken in earlier loops. The diagram below shows the data at that exact step.</p>
+  <div class="card">
+    <div class="row">
+      <div class="seg" role="group" aria-label="Operation" id="cvops"></div>
+      <span class="row" id="cvkrow"><label for="cvk" id="cvkl">Value</label><input type="text" id="cvk" style="width:120px"></span>
+      <label for="cvsrc">Data</label><select id="cvsrc"></select>
+      <button class="btn primary" id="cvgo">Run</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="cvprev">◀ Back</button><button class="btn" id="cvnext">Step ▶</button><button class="btn" id="cvplay">▶▶ Play</button>
+      <input type="range" id="cvs" min="1" max="1" value="1" style="flex:1;min-width:140px" aria-label="Step">
+      <b id="cvsv" style="font-family:var(--mono)"></b>
+      <button class="btn primary" id="cvkeep" style="display:none">Keep this change</button>
+    </div>
+    <p class="callout" id="cvnote" style="font-size:16px"></p>
+    <h3>Flowchart</h3>
+    <div class="treebox fcbox"><svg id="cvfc" role="img" aria-label="Flowchart with the path taken highlighted"></svg></div>
+    <div class="cvgrid">
+      <div class="readout"><h3>Pseudocode</h3><div class="codebox" id="cvcode"></div></div>
+      <div class="readout"><h3>Variables</h3><div class="readout" id="cvvars"></div></div>
+    </div>
+    <h3>Data at this step</h3>
+    <div class="treebox big"><svg id="cvdata" role="img" aria-label="Data at this step"></svg></div>
+    <h3>Trace, newest first</h3>
+    <div class="scroll" style="max-height:300px;overflow-y:auto"><table><thead><tr><th class="num">#</th><th>Loop</th><th>Box reached</th><th>Arrow taken: condition → result</th><th>What happens</th></tr></thead><tbody id="cvtrace"></tbody></table></div>
+  </div>
+</section>
+<section class="view" id="v-playground">
+  <div class="eyebrow">Free play</div>
+<h2>Build your own hash table</h2><p style="margin:0;max-width:72ch">Insert, find and delete keys. Change m or turn off resizing to see long chains form.</p><div class="card"><div class="row"><label for="pv">Key</label><input type="number" id="pv" value="24" style="width:100px"><button class="btn primary" id="pins">Insert</button><button class="btn" id="pfind">Find</button><button class="btn" id="pdel">Delete</button><label for="pm">m</label><select id="pm"><option>5</option><option selected>7</option><option>8</option><option>11</option></select><label><input type="checkbox" id="pauto" checked> Resize over 0.75</label><button class="btn" id="preset">Reset example</button><button class="btn" id="pclr">Clear</button></div><p class="callout" id="pmsg" style="font-size:16px"></p><div class="treebox big"><svg id="pgh" role="img" aria-label="Your hash table"></svg></div><div class="row" style="align-items:stretch"><div class="stat" style="flex:1"><span>n</span><b id="ps1"></b></div><div class="stat" style="flex:1"><span>m</span><b id="ps2"></b></div><div class="stat hl" style="flex:1"><span>α = n / m</span><b id="ps3"></b></div><div class="stat" style="flex:1"><span>Longest chain</span><b id="ps4"></b></div></div></div>
+</section>
+</main>
+</div>
+<script>
+(function(){
+"use strict";
+const BANK=/*QBANK*/{"topic": "Hash Table", "min_words": 4, "stepnames": ["Hashing a key to a bucket", "Collisions and chaining", "Looking a key up", "Load factor and resizing"], "checks": ["Accurate for integer keys with the division method. Real tables use stronger hash functions (and convert strings to numbers first); a prime m spreads keys more evenly.", "Accurate. Chaining is one way to handle collisions; open addressing (probing for the next free slot) is the other.", "Accurate. Average cost is about 1 + n/m comparisons; the worst case, when every key lands in one bucket, is n.", "Accurate. 0.75 is a common limit (Java's HashMap uses it). Resizing costs O(n) once, but spread over many inserts it averages O(1) each."], "steps": {"1": [{"p": "With m = 7, which bucket does key 31 go to?", "a": 3, "h": "31 = 4 × 7 + 3.", "w": "31 mod 7 = 3, because 31 = 4 × 7 + 3.", "ideas": [{"label": "index = key mod m (the remainder after dividing by 7)", "terms": ["mod", "remainder", "divide", "division", "%"]}, {"label": "31 = 4 × 7 + 3, so bucket 3", "terms": ["28", "4 x 7", "4x7", "= 3", "is 3", "bucket 3", "3"]}]}, {"p": "With m = 7, which bucket does key 28 go to?", "a": 0, "h": "28 is an exact multiple of 7.", "w": "28 mod 7 = 0: 28 = 4 × 7 exactly.", "ideas": [{"label": "the remainder after dividing by 7", "terms": ["mod", "remainder", "divide", "division", "%"]}, {"label": "28 divides exactly, so the remainder is 0", "terms": ["0", "zero", "exact", "multiple", "4 x 7", "4x7", "no remainder"]}]}, {"p": "If m = 10 instead, which bucket does 31 go to?", "a": 1, "h": "With m = 10 the index is the last digit.", "w": "31 mod 10 = 1: with m = 10 the index is just the last digit.", "ideas": [{"label": "the remainder after dividing by 10", "terms": ["mod 10", "remainder", "divide", "last digit", "%"]}, {"label": "31 = 3 × 10 + 1, so bucket 1", "terms": ["30", "3 x 10", "3x10", "1"]}]}], "2": [{"p": "After inserting 10, 22, 31, 4, 15, 28, 17 with m = 7, which bucket holds the most keys?", "a": 3, "h": "Work out key mod 7 for each key.", "w": "Bucket 3: 10, 31 and 17 all give remainder 3, so it holds three keys, the most.", "ideas": [{"label": "10, 31 and 17 all give remainder 3", "terms": ["10", "31", "17", "mod 7 = 3", "remainder 3"]}, {"label": "so bucket 3 has three keys", "terms": ["three", "3 keys", "most", "longest"]}]}, {"p": "How many collisions happen (a key arrives at a bucket that already has a key)?", "a": 3, "h": "31 meets 10, 15 meets 22, 17 meets 10 and 31.", "w": "3: 31, 15 and 17 each arrive at a bucket that already holds a key.", "ideas": [{"label": "a collision is a key arriving at a bucket that already has a key", "terms": ["already", "occupied", "same bucket", "not empty", "taken", "collide"]}, {"label": "that happens for 31, 15 and 17: three times", "terms": ["31", "15", "17", "three", "3"]}]}, {"p": "With chaining, where does 17 go in bucket 3?", "a": "End of the chain", "o": ["Front of the chain", "End of the chain", "It replaces 10"], "h": "Look at the insert code: it walks to the end before appending.", "w": "End of the chain: the walk checks 10 and 31 for a duplicate, then appends 17.", "ideas": [{"label": "the insert walks the chain checking for duplicates", "terms": ["walk", "check", "duplicate", "compare", "already there"]}, {"label": "then appends at the end, keeping 10 and 31", "terms": ["end", "append", "after 31", "last", "keeps"]}], "wrong": [{"label": "chaining never overwrites another key; colliding keys share the bucket", "terms": ["replaces 10", "overwrite", "overwrites", "kicks out"]}]}], "3": [{"p": "How many key comparisons does it take to find 17?", "a": 3, "h": "17 → bucket 3, chain 10 → 31 → 17.", "w": "3: 17 mod 7 = 3, so only bucket 3 is walked: 10, then 31, then 17.", "ideas": [{"label": "17 goes to bucket 3 and only that chain is walked", "terms": ["bucket 3", "mod 7", "only that", "one bucket", "chain"]}, {"label": "10, 31, then 17: three comparisons", "terms": ["10", "31", "three", "3"]}]}, {"p": "How many comparisons does it take to find 4?", "a": 1, "h": "4 → bucket 4, which holds only 4.", "w": "1: bucket 4 holds just one key.", "ideas": [{"label": "4 goes to bucket 4", "terms": ["bucket 4", "4 mod 7", "index 4"]}, {"label": "it is the first (only) key there: one comparison", "terms": ["first", "only", "one", "1", "single"]}]}, {"p": "How many comparisons does it take to decide 24 is not in the table?", "a": 3, "h": "24 mod 7 = 3. Walk bucket 3 to NULL.", "w": "3: 24 → bucket 3; compare 10, 31, 17, then NULL.", "ideas": [{"label": "24 mod 7 = 3, so walk bucket 3", "terms": ["bucket 3", "24 mod 7", "= 3", "remainder 3", "21"]}, {"label": "all three keys are compared before reaching NULL", "terms": ["null", "end", "all three", "three", "10, 31, 17"]}]}], "4": [{"p": "What is the load factor with 7 keys and m = 7?", "a": 1, "h": "Load factor = n / m.", "w": "7 / 7 = 1.0: on average one key per bucket.", "ideas": [{"label": "load factor = n / m", "terms": ["n / m", "n/m", "keys divided by", "divided by buckets", "/"]}, {"label": "7 / 7 = 1", "terms": ["7 / 7", "7/7", "1.0", "1", "one"]}]}, {"p": "After resizing to m = 14, which bucket holds 31?", "a": 3, "h": "Rehash: 31 mod 14.", "w": "31 mod 14 = 3 (31 = 2 × 14 + 3).", "ideas": [{"label": "every key is rehashed with the new m", "terms": ["rehash", "new m", "mod 14", "14"]}, {"label": "31 = 2 × 14 + 3, so bucket 3", "terms": ["28", "2 x 14", "2x14", "3"]}]}, {"p": "With m = 8 and a limit of 0.75, after how many keys does the table resize?", "a": 7, "h": "Resize when n / 8 > 0.75.", "w": "7: 6 / 8 = 0.75 is not over the limit, 7 / 8 = 0.875 is.", "ideas": [{"label": "resize when n / m goes over 0.75", "terms": ["0.75", "> 0.75", "over", "exceeds", "greater than"]}, {"label": "6 / 8 = 0.75 is not over; 7 / 8 = 0.875 is", "terms": ["7/8", "7 / 8", "0.875", "6/8", "6 / 8", "7"]}]}, {"p": "Does a resize keep every key in the same bucket?", "a": "No", "o": ["Yes", "No"], "h": "Compare 10 mod 7 with 10 mod 14.", "w": "No: the index depends on m, so after rehashing 10 moves from bucket 3 (m = 7) to bucket 10 (m = 14).", "ideas": [{"label": "the index depends on m, which changed", "terms": ["depends on m", "m changes", "new m", "rehash", "mod 14"]}, {"label": "an example key that moves", "terms": ["10", "22", "15", "17", "moves", "different bucket"]}]}]}}/*END*/;
+const Q=BANK.steps, MINW=BANK.min_words||4, STEPNAMES=BANK.stepnames, CHECKS=BANK.checks;
+const KERNEL=/*KERNEL*/["A hash table stores keys in an array of m buckets, and a hash function turns each key into a bucket index: index = key mod m", "Two different keys can land in the same bucket, which is a collision; with chaining each bucket keeps a linked list of its keys", "To look up a key, compute its index and walk only that bucket's chain, comparing keys until a match or NULL", "The load factor n / m measures how full the table is; when it passes a limit such as 0.75 the table is resized (m doubled) and every key is rehashed"]/*ENDK*/;
+const TOTAL=Object.keys(Q).reduce((s,k)=>s+Q[k].length,0);
+const SVGNS="http://www.w3.org/2000/svg";
+const STORE="hash-selfguide-v1";
+let state={};
+try{state=JSON.parse(localStorage.getItem(STORE)||"{}")||{}}catch(e){state={}}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(state))}catch(e){}}
+function el(t,a,p){const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+document.querySelectorAll(".sn").forEach(x=>x.textContent=STEPNAMES[+x.dataset.i]);
+document.querySelectorAll(".kt").forEach(x=>x.textContent="“"+KERNEL[+x.dataset.k]+"”");
+document.querySelectorAll(".kc").forEach(x=>x.textContent=CHECKS[+x.dataset.k]);
+const kt=document.getElementById("ktable");kt.innerHTML="";
+KERNEL.forEach((s,i)=>{const tr=document.createElement("tr");tr.innerHTML=`<td>${i+1}</td><td>${s}</td><td>${CHECKS[i]} <a href="#step-${i+1}">Step ${i+1}</a></td>`;kt.appendChild(tr)});
+function norm(v){return String(v).trim().toLowerCase()}
+function same(v,a){if(norm(v)===norm(a))return true;const x=parseFloat(v),y=parseFloat(a);
+ return typeof a==="number"&&!isNaN(x)&&/^\s*-?[\d.]+\s*$/.test(String(v))&&Math.abs(x-y)<1e-9}
+function nz(s){return String(s).toLowerCase().replace(/[×*]/g,"x").replace(/[−–—]/g,"-").replace(/→/g,"->").replace(/\b(times|multiplied by)\b/g," x ").replace(/\s+/g," ").trim()}
+function hasTerm(text,t){const T=nz(t);
+ if(/^[a-z0-9]{1,3}$/.test(T))return new RegExp("(^|[^a-z0-9])"+T+"($|[^a-z0-9])").test(text);
+ if(/^[0-9.]+$/.test(T))return new RegExp("(^|[^0-9.])"+T.replace(/\./g,"\\.")+"($|[^0-9])").test(text);
+ return text.includes(T)||text.replace(/ /g,"").includes(T.replace(/ /g,""))}
+/* three-level reasoning grade: perfect = every key idea; partial = at least one; wrong = none, too short, or a known misconception */
+const LEV={perfect:["★ Perfect","g"],partial:["✓ Right, but not perfect","a"],wrong:["✗ Wrong","r"]};
+function judge(q,raw){const text=nz(raw||""),words=text.split(" ").filter(Boolean).length;
+ if(!text)return{lev:"wrong",msg:"Add a sentence explaining why."};
+ if(words<MINW)return{lev:"wrong",msg:`Too short: explain in at least ${MINW} words.`};
+ const mis=(q.wrong||[]).filter(w=>w.terms.some(t=>hasTerm(text,t)));
+ if(mis.length)return{lev:"wrong",msg:"This reasoning contains a mistake: "+mis.map(w=>w.label).join("; ")+"."};
+ const hit=q.ideas.filter(i=>i.terms.some(t=>hasTerm(text,t))),miss=q.ideas.filter(i=>!hit.includes(i));
+ if(!miss.length)return{lev:"perfect",msg:"You covered "+hit.map(i=>i.label).join(" and ")+"."};
+ if(hit.length)return{lev:"partial",msg:"You covered "+hit.map(i=>i.label).join(" and ")+". For a perfect answer, also explain "+miss.map(i=>i.label).join(", and ")+"."};
+ return{lev:"wrong",msg:"Your reasoning doesn't show the key idea yet. Explain "+miss.map(i=>i.label).join(", and ")+"."}}
+function renderQs(){
+ document.querySelectorAll(".qs").forEach(box=>{
+  const s=box.dataset.step; box.innerHTML="<h3>Check yourself</h3><p class='hint-line'>Answer, then say why in your own words. Reasoning is graded ★ Perfect, ✓ Right but not perfect, or ✗ Wrong. A question is complete with a correct answer and reasoning that is at least right.</p>";
+  Q[s].forEach((q,i)=>{
+   const id=s+"."+(i+1), st=state[id]||{}, k=id.replace(".","_"), checked=st.checked;
+   const cls=!checked?"":(st.ok&&st.lev==="perfect")?" ok":(st.ok||st.lev!=="wrong")?" part":" bad";
+   const d=document.createElement("div"); d.className="q"+cls;
+   const ans=q.o?q.o.map(o=>`<button class="choice${st.v===o?" sel":""}" data-v="${o}" aria-pressed="${st.v===o}">${o}</button>`).join("")
+     :`<input type="text" inputmode="decimal" id="in${k}" aria-label="Your answer to Q${i+1}" value="${st.v!=null?String(st.v).replace(/"/g,"&quot;"):""}">`;
+   d.innerHTML=`<div class="p"><span>Q${i+1}</span>${q.p}</div><div class="ans">${ans}</div>
+    <label class="why" for="why${k}">Why? Justify your answer</label>
+    <textarea id="why${k}" rows="2" placeholder="Because …"></textarea>
+    <div class="row"><button class="btn primary chk">Check answer and reasoning</button></div><div class="fb"></div>`;
+   const ta=d.querySelector("textarea"); ta.value=st.r||"";
+   const fb=d.querySelector(".fb");
+   if(checked){const L=LEV[st.lev];
+    fb.innerHTML=`<div><b class="${st.ok?"g":"r"}">${st.ok?"✓ Answer correct.":"✗ Answer not yet."}</b>${st.ok?q.w:"Hint: "+q.h}</div>
+     <div><b class="${L[1]}">Reasoning: ${L[0]}.</b>${st.rmsg}</div>`}
+   if(q.o)d.querySelectorAll(".choice").forEach(b=>b.onclick=()=>{state[id]=Object.assign({},state[id],{v:b.dataset.v,r:ta.value,checked:false});save();renderQs();refresh();
+     const t=document.getElementById("why"+k);if(t)t.focus()});
+   d.querySelector(".chk").onclick=()=>{
+    const v=q.o?(state[id]||{}).v:d.querySelector("input").value;
+    if(v==null||String(v).trim()===""){fb.innerHTML='<div><b class="r">Pick or type an answer first.</b></div>';return}
+    const j=judge(q,ta.value);
+    state[id]={v,ok:same(v,q.a),r:ta.value,lev:j.lev,rmsg:j.msg,checked:true};save();renderQs();refresh()};
+   box.appendChild(d)});
+  const c=countStep(s),pf=countPerfect(s),p=document.createElement("p");p.className="hint-line";
+  p.textContent=`${c} of ${Q[s].length} complete, ${pf} perfect`+(c===Q[s].length?". Step complete.":"");box.appendChild(p)});
+}
+function qst(s,i){const t=state[s+"."+(i+1)];return t&&t.checked?t:null}
+function countStep(s){return Q[s].filter((q,i)=>{const t=qst(s,i);return t&&t.ok&&t.lev&&t.lev!=="wrong"}).length}
+function countPerfect(s){return Q[s].filter((q,i)=>{const t=qst(s,i);return t&&t.ok&&t.lev==="perfect"}).length}
+const STEPS_=Object.keys(Q);
+function refresh(){
+ let tot=0,perf=0,next=null;const tb=document.getElementById("ptable");tb.innerHTML="";
+ STEPS_.forEach((s,ix)=>{const c=countStep(s),pf=countPerfect(s),n=Q[s].length;tot+=c;perf+=pf;
+  const status=c===n?"done":c>0?"part":"none"; if(c<n&&!next)next=s;
+  const dot=document.getElementById("d"+s);if(dot){dot.className="dot"+(status==="done"?" done":status==="part"?" part":"");dot.textContent=status==="done"?"✓":s}
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td><a href="#step-${s}">${s}. ${STEPNAMES[ix]}</a></td><td class="num">${n}</td><td class="num">${c}</td><td class="num">${pf}</td><td><span class="pill ${status}">${status==="done"?"Done":status==="part"?"In progress":"Not started"}</span></td>`;
+  tb.appendChild(tr)});
+ const pct=Math.round(tot/TOTAL*100);
+ document.getElementById("pcor").textContent=tot;document.getElementById("ptot").textContent=TOTAL;document.getElementById("pperf").textContent=perf;
+ document.getElementById("ppct").textContent=pct+"%";
+ document.getElementById("navmeter").textContent=`${tot} of ${TOTAL} complete · ${perf} perfect`;
+ document.getElementById("navbar").style.width=pct+"%";
+ document.getElementById("nextcall").textContent=next?`Next: step ${next}, ${STEPNAMES[+next-1].toLowerCase()}`:(perf<TOTAL?`All steps complete. ${TOTAL-perf} answers can still be made perfect, or open the playground.`:"Everything complete and perfect. Open the playground.");
+}
+
+document.getElementById("reset").onclick=()=>{state={};save();renderQs();refresh()};
+/* ===== Generic Code & flowchart engine =====
+ Topic supplies KIT.ops = {opKey:{label, input:{label,def,type}|null, keeps?, W,H, code:[...], nodes:{id:{t,x,y,w?,text,line,la?}}, edges:{id:{pts,yes?,no?,loop?,lp?,la?}}, run(data,input)->steps}}
+ and KIT.cv = {sources:[{id,label,get()}], draw(svg, step, opKey), vars(step, opKey, input)->[[name,value]], keep(step, sourceId)}.
+ A step: {n, via, lab, it, note, done?, ...topic fields}. */
+let cvOp=null,cvSteps=[],cvI=0,cvTimer=null,cvInput=null;
+function cvInit(){
+ const ops=Object.keys(KIT.ops);cvOp=ops[0];
+ const seg=document.getElementById("cvops");seg.innerHTML=ops.map((k,i)=>`<button data-op="${k}"${i===0?' class="on"':""}>${KIT.ops[k].label}</button>`).join("");
+ const src=document.getElementById("cvsrc");src.innerHTML=KIT.cv.sources.map(s=>`<option value="${s.id}">${s.label}</option>`).join("");
+ seg.querySelectorAll("button").forEach(b=>b.onclick=()=>{cvOp=b.dataset.op;seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));cvSetInput();cvRun()});
+ document.getElementById("cvgo").onclick=cvRun;document.getElementById("cvk").onkeydown=e=>{if(e.key==="Enter")cvRun()};
+ src.onchange=cvRun;
+ document.getElementById("cvprev").onclick=()=>{stopPlay();if(cvI>0){cvI--;cvShow()}};
+ document.getElementById("cvnext").onclick=()=>{stopPlay();if(cvI<cvSteps.length-1){cvI++;cvShow()}};
+ document.getElementById("cvs").oninput=e=>{stopPlay();cvI=+e.target.value-1;cvShow()};
+ document.getElementById("cvplay").onclick=()=>{if(cvTimer){stopPlay();return}
+  if(cvI>=cvSteps.length-1)cvI=-1;document.getElementById("cvplay").textContent="❚❚ Pause";
+  cvTimer=setInterval(()=>{if(cvI>=cvSteps.length-1){stopPlay();return}cvI++;cvShow()},900)};
+ document.getElementById("cvkeep").onclick=()=>{const st=cvSteps[cvSteps.length-1];KIT.cv.keep(st,src.value);cvRun();
+  document.getElementById("cvnote").textContent="Kept. Run another operation on the updated data."};
+ cvSetInput();cvRun();
+}
+function cvSetInput(){const op=KIT.ops[cvOp],row=document.getElementById("cvkrow");
+ if(!op.input){row.style.display="none";return}
+ row.style.display="flex";document.getElementById("cvkl").textContent=op.input.label;
+ const k=document.getElementById("cvk");k.type=op.input.type||"text";k.value=op.input.def}
+function cvParse(){const op=KIT.ops[cvOp];if(!op.input)return null;const v=document.getElementById("cvk").value.trim();
+ return (op.input.type==="number")?parseFloat(v):v}
+function stopPlay(){if(cvTimer){clearInterval(cvTimer);cvTimer=null;document.getElementById("cvplay").textContent="▶▶ Play"}}
+function cvRun(){stopPlay();cvInput=cvParse();
+ if(KIT.ops[cvOp].input&&(cvInput===""||(typeof cvInput==="number"&&isNaN(cvInput)))){document.getElementById("cvnote").textContent="Type a value first.";return}
+ const srcId=document.getElementById("cvsrc").value,data=KIT.cv.sources.find(s=>s.id===srcId).get();
+ cvSteps=KIT.ops[cvOp].run(JSON.parse(JSON.stringify(data)),cvInput);cvI=0;
+ const sl=document.getElementById("cvs");sl.max=cvSteps.length;sl.value=1;cvShow()}
+function cvShow(){
+ const F=KIT.ops[cvOp],st=cvSteps[cvI];if(!st)return;
+ document.getElementById("cvs").value=cvI+1;document.getElementById("cvsv").textContent=`${cvI+1} / ${cvSteps.length}`;
+ const done=new Set(cvSteps.slice(0,cvI).map(s=>F.nodes[s.n].line)),curLine=F.nodes[st.n].line;
+ document.getElementById("cvcode").innerHTML=F.code.map((l,i)=>`<div class="cl${i===curLine?" now":done.has(i)?" ran":""}"><span>${i+1}</span><code>${l.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</code></div>`).join("");
+ const V=KIT.cv.vars(st,cvOp,cvInput).concat([["loop",st.it],["condition",st.lab||"—"]]);
+ document.getElementById("cvvars").innerHTML=V.map(([a,b])=>`<div class="stat"><span>${a}</span><b>${b}</b></div>`).join("");
+ document.getElementById("cvnote").textContent=`Step ${cvI+1}: ${st.note}`;
+ const svg=document.getElementById("cvfc");svg.innerHTML="";svg.setAttribute("viewBox",`0 0 ${F.W} ${F.H}`);svg.setAttribute("width",F.W*1.12);svg.setAttribute("height",F.H*1.12);
+ const defs=el("defs",{},svg);[["fa","var(--edge)"],["fh","var(--warm)"]].forEach(([id,c])=>{const m=el("marker",{id,viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto"},defs);el("path",{d:"M0,0L10,5L0,10z",style:"fill:"+c},m)});
+ const taken=new Map(),past=new Set(),visN=new Set();
+ cvSteps.slice(0,cvI+1).forEach(s=>{if(!s.via)return;if(s.it===st.it){taken.set(s.via,s.lab);visN.add(s.n)}else past.add(s.via)});
+ const g1=el("g",{},svg),g2=el("g",{},svg),g3=el("g",{},svg),g4=el("g",{},svg);
+ Object.entries(F.edges).forEach(([id,e])=>{const hot=taken.has(id),ps=!hot&&past.has(id);
+  el("polyline",{points:e.pts.map(p=>p.join(",")).join(" "),class:"fe"+(hot?" hot":ps?" past":""),"marker-end":`url(#${hot?"fh":"fa"})`},hot?g2:g1);
+  if(e.yes||e.no){const [x,y]=e.pts[0],[x2,y2]=e.pts[1];const lx=x+(x2>x?14:x2<x?-14:12),ly=y+(y2>y?16:-6);
+   el("text",{x:lx,y:ly,class:"fyn","text-anchor":x2<x?"end":"start"},g1).textContent=e.yes?"yes":"no"}
+  if(hot&&taken.get(id)){const lab=taken.get(id);
+   const vertical=!e.lp&&e.pts.length===2&&e.pts[0][0]===e.pts[1][0],horiz=!e.lp&&e.pts.length===2&&e.pts[0][1]===e.pts[1][1];
+   let [lx,ly]=e.lp||[(e.pts[0][0]+e.pts[e.pts.length-1][0])/2,(e.pts[0][1]+e.pts[e.pts.length-1][1])/2];
+   const w=lab.length*6.4+14;let bx;
+   if(horiz){lx=Math.max(e.pts[0][0],e.pts[1][0]);ly=e.pts[0][1]-29;bx=e.pts[1][0]>e.pts[0][0]?lx:lx-w}
+   else{if(vertical)lx+=8;bx=(vertical||e.la)?lx+(e.la?6:0):lx-w/2}
+   const lg=el("g",{},g4);el("rect",{x:bx,y:ly-10,width:w,height:19,rx:5,class:"flab"},lg);el("text",{x:bx+w/2,y:ly,class:"flabt"},lg).textContent=lab}});
+ Object.entries(F.nodes).forEach(([id,n])=>{const w=n.w||(n.t==="proc"?170:190),cls="fn "+n.t+(id===st.n?" cur":visN.has(id)?" vis":"");
+  const g=el("g",{class:cls,transform:`translate(${n.x},${n.y})`},g3);
+  if(n.t==="dec")el("polygon",{points:`${-w/2},0 0,-30 ${w/2},0 0,30`},g);
+  else el("rect",{x:-w/2,y:-17,width:w,height:34,rx:n.t==="term"?17:4},g);
+  el("text",{},g).textContent=n.text});
+ KIT.cv.draw(document.getElementById("cvdata"),st,cvOp);
+ document.getElementById("cvkeep").style.display=(F.keeps&&st.done&&cvI===cvSteps.length-1)?"inline-block":"none";
+ document.getElementById("cvtrace").innerHTML=cvSteps.slice(0,cvI+1).map((s,i)=>`<tr${i===cvI?' class="now"':""}><td class="num">${i+1}</td><td>${s.it}</td><td>${F.nodes[s.n].text}</td><td class="mono">${s.lab||"—"}</td><td>${s.note}</td></tr>`).reverse().join("");
+}
+
+/* ======== topic ======== */
+/* drawHash(svg, H, o): H = {m, t:[[keys...], ...]}.
+ o.bi: highlighted bucket   o.cur:[b,j] current chain node   o.vis:["b:j"]   o.newk:[b,j]   o.calc: text shown at the top
+ o.dim: true to fade everything except bucket bi */
+function drawHash(svg,H,o){
+ o=o||{};svg.innerHTML="";const m=H.m,t=H.t,rowH=40,top=o.calc?54:20,bx=24,bw=48,nw=58,gap=30,x0=bx+bw+34;
+ const maxLen=Math.max(1,...t.map(c=>c.length)),W=Math.max(o.minW||820,x0+maxLen*(nw+gap)+60),Hh=top+m*rowH+14;
+ svg.setAttribute("viewBox",`0 0 ${W} ${Hh}`);
+ const defs=el("defs",{},svg);[["ha","var(--edge)"],["hh","var(--warm)"]].forEach(([id,c])=>{const mk=el("marker",{id:svg.id+id,viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto"},defs);el("path",{d:"M0,0L10,5L0,10z",style:"fill:"+c},mk)});
+ if(o.calc)el("text",{x:bx,y:30,class:"calc"},svg).textContent=o.calc;
+ const vis=new Set(o.vis||[]);
+ for(let b=0;b<m;b++){const y=top+b*rowH,hl=b===o.bi;
+  const g=el("g",{class:"bidx"+(hl?" hl":""),transform:`translate(${bx},${y})`},svg);el("rect",{x:0,y:0,width:bw,height:28,rx:3},g);el("text",{x:bw/2,y:14},g).textContent="["+b+"]";
+  const ch=t[b]||[];const op=o.dim&&!hl?0.35:1;
+  let x=bx+bw;
+  if(!ch.length){el("text",{x:x+10,y:y+14,class:"nul",opacity:op},svg).textContent="NULL";continue}
+  ch.forEach((k,j)=>{const nx=x0+j*(nw+gap),key=b+":"+j,isCur=o.cur&&o.cur[0]===b&&o.cur[1]===j,isNew=o.newk&&o.newk[0]===b&&o.newk[1]===j;
+   const hot=hl&&(vis.has(key)||isCur||isNew);
+   el("line",{x1:x+2,y1:y+14,x2:nx-3,y2:y+14,class:"ln"+(hot?" hot":""),opacity:op,"marker-end":`url(#${svg.id}${hot?"hh":"ha"})`},svg);
+   const gg=el("g",{class:"lbox"+(isNew?" new":isCur?" cur":vis.has(key)?" vis":""),transform:`translate(${nx},${y})`,opacity:op},svg);
+   el("rect",{x:0,y:0,width:nw,height:28,rx:3},gg);el("text",{x:nw/2,y:14},gg).textContent=k;
+   x=nx+nw;
+   if(j===ch.length-1)el("text",{x:x+8,y:y+14,class:"nul",opacity:op},svg).textContent="NULL"});
+ }
+}
+
+const $=id=>document.getElementById(id);
+const KEYS=[10,22,31,4,15,28,17],MORE=[10,22,31,4,15,28,17,3,45,12,26,39],LIMIT=0.75;
+const md=(k,m)=>((k%m)+m)%m;
+const newT=m=>({m,t:Array.from({length:m},()=>[])});
+const count=H=>H.t.reduce((s,c)=>s+c.length,0);
+function rehash(H,m){const N=newT(m);H.t.forEach(c=>c.forEach(k=>N.t[md(k,m)].push(k)));return N}
+function build(keys,m,auto){let H=newT(m);const ev=[];keys.forEach(k=>{const i=md(k,H.m);if(!H.t[i].includes(k))H.t[i].push(k);
+ if(auto&&count(H)/H.m>LIMIT){ev.push(`after ${k}: α = ${count(H)}/${H.m} = ${(count(H)/H.m).toFixed(2)} > 0.75 → m ${H.m} → ${H.m*2}`);H=rehash(H,H.m*2)}});return{H,ev}}
+const longest=H=>Math.max(0,...H.t.map(c=>c.length));
+let PH=build(KEYS.slice(0,5),7,true).H,CVH=build(KEYS.slice(0,5),7,true).H;
+const clone=H=>JSON.parse(JSON.stringify(H));
+
+const KIT={
+ init(){
+  const s1=()=>{const k=parseInt($("ht1k").value),m=+$("ht1m").value;if(isNaN(k))return;const i=md(k,m);
+   const H=build(KEYS,m,false).H;
+   drawHash($("ht1"),H,{bi:i,calc:`${k} mod ${m} = ${i}   (${k} = ${Math.floor(k/m)} × ${m} + ${i})`,dim:true});
+   $("ht1i").textContent=i;$("ht1tab").innerHTML=KEYS.map(x=>`<tr${md(x,m)===i?' style="background:var(--warm-soft)"':""}><td>${x}</td><td class="num">${md(x,m)}</td></tr>`).join("")};
+  $("ht1k").oninput=s1;$("ht1m").onchange=s1;s1();
+  const s2=()=>{const k=+$("ht2k").value;$("ht2kv").textContent=k;const H=newT(7);let col=0,last=null,msg="Empty table: every bucket is NULL.";
+   KEYS.slice(0,k).forEach((x,j)=>{const i=md(x,7),c=H.t[i].length>0;if(c)col++;H.t[i].push(x);last=[i,H.t[i].length-1];
+    if(j===k-1)msg=`${x} mod 7 = ${i}: `+(c?`collision! Bucket ${i} already holds ${H.t[i].slice(0,-1).join(", ")}, so ${x} is chained on the end.`:`bucket ${i} was empty.`)});
+   drawHash($("ht2"),H,{bi:last?last[0]:null,newk:last});$("ht2msg").textContent=msg;
+   $("ht2c").textContent=col;$("ht2l").textContent=longest(H);$("ht2e").textContent=H.t.filter(c=>!c.length).length};
+  $("ht2k").oninput=s2;s2();
+  const s3=()=>{const k=parseInt($("ht3k").value);if(isNaN(k))return;const H=build(KEYS,7,false).H,i=md(k,7),ch=H.t[i],j=ch.indexOf(k);
+   const vis=(j<0?ch:ch.slice(0,j)).map((_,q)=>i+":"+q);
+   drawHash($("ht3"),H,{bi:i,vis,cur:j<0?null:[i,j],calc:`${k} mod 7 = ${i}: walk bucket ${i} only`,dim:true});
+   $("ht3b").textContent=i;$("ht3c").textContent=j<0?ch.length:j+1;
+   $("ht3r").textContent=j<0?`not found: compared ${ch.length?ch.join(", "):"nothing"}, then NULL`:`found after comparing ${ch.slice(0,j+1).join(", ")}`};
+  $("ht3go").onclick=s3;$("ht3k").onkeydown=e=>{if(e.key==="Enter")s3()};s3();
+  const s4=()=>{const n=+$("ht4n").value,m0=+$("ht4m").value,auto=$("ht4auto").checked;$("ht4nv").textContent=n;
+   const {H,ev}=build(MORE.slice(0,n),m0,auto);drawHash($("ht4"),H,{minW:820});
+   $("ht4sn").textContent=n;$("ht4sm").textContent=H.m;$("ht4a").textContent=(n/H.m).toFixed(2)+(n/H.m>LIMIT?" (over 0.75)":"");
+   $("ht4r").textContent=ev.length;$("ht4l").textContent=longest(H);
+   $("ht4msg").textContent=ev.length?"Resized "+ev.join("; "):auto?"No resize yet: α has stayed at or under 0.75.":"Resizing is off: chains keep growing as n rises."};
+  ["ht4n"].forEach(id=>$(id).oninput=s4);$("ht4m").onchange=s4;$("ht4auto").onchange=s4;s4();
+  /* playground */
+  const pmsg=t=>$("pmsg").textContent=t;
+  const pg=o=>{drawHash($("pgh"),PH,Object.assign({minW:820},o||{}));const n=count(PH);
+   $("ps1").textContent=n;$("ps2").textContent=PH.m;$("ps3").textContent=(n/PH.m).toFixed(2);$("ps4").textContent=longest(PH)};
+  const v=()=>parseInt($("pv").value);
+  $("pins").onclick=()=>{const k=v();if(isNaN(k))return;const i=md(k,PH.m);
+   if(PH.t[i].includes(k)){pg({bi:i,cur:[i,PH.t[i].indexOf(k)]});pmsg(`${k} is already in bucket ${i}.`);return}
+   const col=PH.t[i].length>0;PH.t[i].push(k);let msg=`${k} mod ${PH.m} = ${i}: `+(col?`collision, chained after ${PH.t[i].slice(0,-1).join(", ")}.`:"bucket was empty.");
+   const n=count(PH);if($("pauto").checked&&n/PH.m>LIMIT){msg+=` α = ${n}/${PH.m} = ${(n/PH.m).toFixed(2)} > 0.75, so m doubles to ${PH.m*2} and every key is rehashed.`;PH=rehash(PH,PH.m*2);$("pm").value="";pg({bi:md(k,PH.m),newk:[md(k,PH.m),PH.t[md(k,PH.m)].indexOf(k)]})}
+   else pg({bi:i,newk:[i,PH.t[i].length-1]});pmsg(msg)};
+  $("pfind").onclick=()=>{const k=v();if(isNaN(k))return;const i=md(k,PH.m),ch=PH.t[i],j=ch.indexOf(k);
+   pg({bi:i,dim:true,vis:(j<0?ch:ch.slice(0,j)).map((_,q)=>i+":"+q),cur:j<0?null:[i,j],calc:`${k} mod ${PH.m} = ${i}`});
+   pmsg(j<0?`Not found after ${ch.length} comparison${ch.length===1?"":"s"} in bucket ${i}.`:`Found in bucket ${i} after ${j+1} comparison${j?"s":""}.`)};
+  $("pdel").onclick=()=>{const k=v();if(isNaN(k))return;const i=md(k,PH.m),j=PH.t[i].indexOf(k);
+   if(j<0){pmsg(`${k} is not in the table.`);pg({bi:i});return}PH.t[i].splice(j,1);pg({bi:i});pmsg(`Removed ${k} from bucket ${i}: like deleting from a linked list, the node before it now skips it.`)};
+  $("pm").onchange=()=>{const m=+$("pm").value;if(!m)return;PH=rehash(PH,m);pg();pmsg(`Rehashed every key into ${m} buckets.`)};
+  $("preset").onclick=()=>{PH=build(KEYS.slice(0,5),7,true).H;$("pm").value="7";pg();pmsg("Back to 10, 22, 31, 4, 15 in 7 buckets.")};
+  $("pclr").onclick=()=>{PH=newT(+$("pm").value||7);pg();pmsg("Empty table.")};
+  pg();pmsg("Insert 28: it pushes α over 0.75 and triggers a resize.");
+ },
+ cv:{
+  sources:[{id:"ex",label:"Example: 10, 22, 31, 4, 15 (m = 7)",get:()=>CVH},{id:"pg",label:"My playground table",get:()=>PH}],
+  keep(st,src){if(src==="pg")PH=clone(st.final);else CVH=clone(st.final)},
+  draw(svg,st){drawHash(svg,st.H,{minW:820,bi:st.bi,cur:st.cur,vis:st.vis,newk:st.newk,calc:st.calc})},
+  vars(st,op,k){const c=st.cur?st.H.t[st.cur[0]][st.cur[1]]:null;
+   return [["key",k],["m",st.H.m],["n",count(st.H)],["i",st.bi==null?"—":st.bi],["cur",st.cur===undefined?"—":c==null?"NULL":c],["α = n/m",(count(st.H)/st.H.m).toFixed(2)]]}
+ },
+ ops:{
+  insert:{label:"Insert",input:{label:"Key",def:"17",type:"number"},keeps:1,W:680,H:530,
+   code:["i = key mod m","cur = first node of bucket[i]","WHILE cur != NULL","    IF cur.key == key THEN STOP        // already there","    cur = cur.next","append key to bucket[i];  n = n + 1","IF n / m > 0.75 THEN m = 2m; rehash every key","STOP"],
+   nodes:{S:{t:"term",x:280,y:28,text:"Start: key",line:-1},P0:{t:"proc",x:280,y:90,text:"i = key mod m",line:0},A:{t:"proc",x:280,y:155,w:270,text:"cur = first node of bucket[i]",line:1},
+    D1:{t:"dec",x:280,y:235,text:"cur == NULL ?",line:2},P6:{t:"proc",x:530,y:235,w:210,text:"append key; n = n + 1",line:5},
+    D2:{t:"dec",x:280,y:330,text:"cur.key == key ?",line:3},E2:{t:"term",x:280,y:425,text:"already there · stop",line:3},P:{t:"proc",x:90,y:330,w:150,text:"cur = cur.next",line:4},
+    D5:{t:"dec",x:530,y:330,text:"n / m > 0.75 ?",line:6},E5:{t:"term",x:530,y:425,w:230,text:"m = 2m, rehash all · stop",line:6},E6:{t:"term",x:530,y:500,text:"stop",line:7}},
+   edges:{"S-P0":{pts:[[280,45],[280,73]]},"P0-A":{pts:[[280,107],[280,138]]},"A-D1":{pts:[[280,172],[280,205]]},
+    "D1-P6":{pts:[[375,235],[425,235]],yes:1},"D1-D2":{pts:[[280,265],[280,300]],no:1},"D2-E2":{pts:[[280,360],[280,408]],yes:1},
+    "D2-P":{pts:[[185,330],[165,330]],no:1},"P-D1":{pts:[[90,313],[90,235],[185,235]],loop:1,lp:[90,266],la:1},
+    "P6-D5":{pts:[[530,252],[530,300]]},"D5-E5":{pts:[[530,360],[530,408]],yes:1},"D5-E6":{pts:[[625,330],[655,330],[655,500],[625,500]],no:1}},
+   run(H,k){const S=[];let it=1;const i=md(k,H.m),ch=H.t[i];let j=ch.length?0:-1;const vis=[];
+    const add=(n,via,lab,note,f)=>S.push(Object.assign({n,via,lab,it,note,H:clone(H),bi:i,cur:j<0?null:[i,j],vis:vis.slice()},f||{}));
+    S.push({n:"S",via:null,lab:null,it,note:`Insert ${k}.`,H:clone(H)});
+    add("P0","S-P0",null,`${k} mod ${H.m} = ${i}: go to bucket ${i}.`,{cur:undefined,calc:`${k} mod ${H.m} = ${i}`});
+    add("A","P0-A",null,ch.length?`cur = ${ch[0]}, the first key in bucket ${i}.`:`Bucket ${i} is empty, so cur = NULL.`);
+    let via="A-D1",vl=null;
+    for(;;){add("D1",via,vl,j<0?"Is cur NULL? Yes: reached the end of the chain without finding the key.":`Is cur NULL? No, cur is ${ch[j]}.`);
+     if(j<0)break;
+     add("D2","D1-D2",`cur = ${ch[j]} → no`,`Is ${ch[j]} the same key as ${k}?`);
+     if(ch[j]===k){add("E2","D2-E2",`${ch[j]} = ${k} → yes`,`${k} is already in bucket ${i}. Nothing to add. Stop.`);return S}
+     vis.push(i+":"+j);const nx=j+1<ch.length?j+1:-1;
+     add("P","D2-P",`${ch[j]} ≠ ${k} → no`,`Move on: cur = ${nx<0?"NULL":ch[nx]}.`,{cur:nx<0?null:[i,nx]});
+     j=nx;it++;via="P-D1";vl=`cur = ${j<0?"NULL":ch[j]} · loop ${it}`}
+    const col=ch.length>0;H.t[i].push(k);const n=count(H),a=n/H.m;
+    add("P6","D1-P6","cur = NULL → yes",`Append ${k} to bucket ${i}${col?" (a collision: it joins the chain)":""}. n = ${n}.`,{cur:null,newk:[i,H.t[i].length-1]});
+    add("D5","P6-D5",null,`Load factor α = ${n} / ${H.m} = ${a.toFixed(2)}. Is it over 0.75?`,{cur:null,newk:[i,H.t[i].length-1]});
+    if(a>LIMIT){const N=rehash(H,H.m*2),ni=md(k,N.m);
+     S.push({n:"E5",via:"D5-E5",lab:`${n}/${H.m} = ${a.toFixed(2)} > 0.75 → yes`,it,note:`Resize: m ${H.m} → ${N.m}. Every key is rehashed with mod ${N.m}; ${k} now sits in bucket ${ni}. Stop.`,H:N,bi:ni,newk:[ni,N.t[ni].indexOf(k)],calc:`rehashed with m = ${N.m}`,done:1,final:N});return S}
+    add("E6","D5-E6",`${n}/${H.m} = ${a.toFixed(2)} ≤ 0.75 → no`,`Inserted ${k} in bucket ${i}. No resize needed. Stop.`,{cur:null,newk:[i,H.t[i].length-1],done:1,final:clone(H)});return S}},
+  search:{label:"Search",input:{label:"Key",def:"31",type:"number"},W:640,H:475,
+   code:["i = key mod m","cur = first node of bucket[i]","WHILE cur != NULL","    IF cur.key == key THEN RETURN found","    cur = cur.next","RETURN not found"],
+   nodes:{S:{t:"term",x:260,y:28,text:"Start: key",line:-1},P0:{t:"proc",x:260,y:90,text:"i = key mod m",line:0},A:{t:"proc",x:260,y:155,w:270,text:"cur = first node of bucket[i]",line:1},
+    D1:{t:"dec",x:260,y:235,text:"cur == NULL ?",line:2},E1:{t:"term",x:510,y:235,text:"not found · stop",line:5},
+    D2:{t:"dec",x:260,y:325,text:"cur.key == key ?",line:3},E2:{t:"term",x:510,y:325,text:"found · stop",line:3},P:{t:"proc",x:260,y:410,text:"cur = cur.next",line:4}},
+   edges:{"S-P0":{pts:[[260,45],[260,73]]},"P0-A":{pts:[[260,107],[260,138]]},"A-D1":{pts:[[260,172],[260,205]]},
+    "D1-E1":{pts:[[355,235],[415,235]],yes:1},"D1-D2":{pts:[[260,265],[260,295]],no:1},"D2-E2":{pts:[[355,325],[415,325]],yes:1},"D2-P":{pts:[[260,355],[260,393]],no:1},
+    "P-D1":{pts:[[260,427],[260,452],[30,452],[30,235],[165,235]],loop:1,lp:[145,452]}},
+   run(H,k){const S=[];let it=1;const i=md(k,H.m),ch=H.t[i];let j=ch.length?0:-1;const vis=[];
+    const add=(n,via,lab,note,f)=>S.push(Object.assign({n,via,lab,it,note,H,bi:i,cur:j<0?null:[i,j],vis:vis.slice()},f||{}));
+    S.push({n:"S",via:null,lab:null,it,note:`Look up ${k}.`,H});
+    add("P0","S-P0",null,`${k} mod ${H.m} = ${i}: only bucket ${i} can hold it.`,{cur:undefined,calc:`${k} mod ${H.m} = ${i}`});
+    add("A","P0-A",null,ch.length?`cur = ${ch[0]}, the first key in bucket ${i}.`:`Bucket ${i} is empty, so cur = NULL.`);
+    let via="A-D1",vl=null;
+    for(;;){add("D1",via,vl,j<0?"Is cur NULL? Yes: end of the chain.":`Is cur NULL? No, cur is ${ch[j]}.`);
+     if(j<0){add("E1","D1-E1","cur = NULL → yes",`${k} is not in the table: ${vis.length} comparison${vis.length===1?"":"s"} in bucket ${i}. Stop.`);return S}
+     add("D2","D1-D2",`cur = ${ch[j]} → no`,`Compare ${ch[j]} with ${k}.`);
+     if(ch[j]===k){add("E2","D2-E2",`${ch[j]} = ${k} → yes`,`Found ${k} in bucket ${i} after ${j+1} comparison${j?"s":""}. Stop.`);return S}
+     vis.push(i+":"+j);const nx=j+1<ch.length?j+1:-1;
+     add("P","D2-P",`${ch[j]} ≠ ${k} → no`,`Move on: cur = ${nx<0?"NULL":ch[nx]}.`,{cur:nx<0?null:[i,nx]});
+     j=nx;it++;via="P-D1";vl=`cur = ${j<0?"NULL":ch[j]} · loop ${it}`}}}
+ }
+};
+
+KIT.init();
+cvInit();
+const VIEWS=["start","kernel","step-1","step-2","step-3","step-4","code","playground"];
+function route(){let v=location.hash.slice(1);if(!VIEWS.includes(v))v="start";
+ document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+ document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===v));window.scrollTo(0,0)}
+window.addEventListener("hashchange",route);
+renderQs();refresh();route();
+})();
+</script>
+</body>
+</html>

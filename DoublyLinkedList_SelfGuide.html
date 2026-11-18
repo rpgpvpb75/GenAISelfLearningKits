@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.classList.add("js")</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doubly Linked List Self-Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+
+/* Layout: fixed step rail on the left, one step view at a time on the right; trees drawn live in SVG (x = sorted rank, y = level). */
+:root{
+  --bg:#F4F6F8; --panel:#FFFFFF; --ink:#16212E; --muted:#5B6878; --line:#D7DEE6;
+  --accent:#0B7A83; --accent-soft:#DDF0F1; --warm:#C26A12; --warm-soft:#FBEBD8;
+  --ok:#1E7B45; --ok-soft:#DCF1E3; --bad:#B3362B; --bad-soft:#F8DEDB;
+  --edge:#8796A8;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F151C; --panel:#17202A; --ink:#E6ECF2; --muted:#9AA8B8; --line:#2A3644;
+  --accent:#3FB8C1; --accent-soft:#16363A; --warm:#F0A04B; --warm-soft:#3A2A17;
+  --ok:#5CCB86; --ok-soft:#173526; --bad:#F07F73; --bad-soft:#3D1F1C; --edge:#6E7E91; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F151C; --panel:#17202A; --ink:#E6ECF2; --muted:#9AA8B8; --line:#2A3644;
+  --accent:#3FB8C1; --accent-soft:#16363A; --warm:#F0A04B; --warm-soft:#3A2A17;
+  --ok:#5CCB86; --ok-soft:#173526; --bad:#F07F73; --bad-soft:#3D1F1C; --edge:#6E7E91; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:30px} h2{font-size:24px} h3{font-size:16px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100%}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
+nav .brand{font-family:var(--display);font-size:17px;font-weight:700;padding:0 8px 14px}
+nav .brand small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14px}
+nav a:hover{background:var(--bg)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:11px;font-family:var(--mono);flex:none}
+nav .dot.done{background:var(--ok);border-color:var(--ok);color:#fff}
+nav .dot.part{border-color:var(--warm);color:var(--warm)}
+nav .meter{margin:16px 8px 0;font-size:12px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+main{padding:28px clamp(16px,4vw,44px) 60px;max-width:1120px;min-width:0}
+section.view{display:flex;flex-direction:column;gap:18px;margin-bottom:28px}
+
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.kq{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;padding:12px 16px;font-style:italic}
+.kq b{font-style:normal;display:block;font-size:12px;font-family:var(--mono);color:var(--accent);margin-bottom:2px;text-transform:uppercase}
+.kcheck{border-left:4px solid var(--bad);background:var(--bad-soft);border-radius:0 10px 10px 0;padding:12px 16px}
+.kcheck b{color:var(--bad)}
+.kcheck.good{border-color:var(--ok);background:var(--ok-soft)} .kcheck.good b{color:var(--ok)}
+.terms{display:grid;gap:8px;margin:0;padding:0;list-style:none;max-width:74ch}
+.terms li{padding-left:16px;position:relative}
+.terms li::before{content:"";position:absolute;left:0;top:.65em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.term{font-weight:600}
+.lab{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(220px,1fr);gap:18px;align-items:start}
+.lab.wide{grid-template-columns:1fr}
+.treebox{background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+.treebox svg{display:block;width:100%;height:auto;min-width:520px}
+.treebox.big svg{min-width:900px}
+.readout{display:flex;flex-direction:column;gap:9px}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-radius:8px;background:var(--bg);font-size:14px}
+.stat b{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.stat.hl{background:var(--accent-soft)} .stat.hl b{color:var(--accent)}
+.stat.yes b{color:var(--ok)} .stat.no b{color:var(--bad)}
+.hint-line{font-size:13px;color:var(--muted);margin:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:var(--panel);padding:7px 12px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=number],input[type=text],select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px}
+input[type=range]{accent-color:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.chips{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:12.5px}
+.chips span{padding:2px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+.chips span.cur{background:var(--accent);border-color:var(--accent);color:#fff}
+.chips span.vis{background:var(--accent-soft);border-color:var(--accent)}
+.qs{display:flex;flex-direction:column;gap:12px}
+.q{border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:10px;background:var(--panel)}
+.q.ok{border-color:var(--ok);background:var(--ok-soft)}
+.q.bad{border-color:var(--bad);background:var(--bad-soft)}
+.q.part{border-color:var(--warm);background:var(--warm-soft)}
+.q .p{font-weight:500}
+.q .p span{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.q .ans{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.q .ans input{width:130px}
+.choice{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer}
+.choice.sel{border-color:var(--ink);font-weight:600}
+.fb{font-size:14px;display:grid;gap:4px}
+.fb b{margin-right:6px} .fb b.g{color:var(--ok)} .fb b.r{color:var(--bad)} .fb b.a{color:var(--warm)}
+.why{font-size:13px;font-weight:600;color:var(--muted)}
+.q textarea{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;width:100%;resize:vertical;font:inherit;color:inherit}
+.next{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.pill.done{background:var(--ok-soft);color:var(--ok)} .pill.part{background:var(--warm-soft);color:var(--warm)} .pill.none{background:var(--bg);color:var(--muted)}
+.callout{font-family:var(--display);font-size:19px;color:var(--accent);margin:0}
+/* svg tree */
+.e{stroke:var(--edge);stroke-width:1.6;fill:none}
+.e.hot{stroke:var(--warm);stroke-width:3}
+.n rect{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+.n text{fill:var(--ink);font-family:var(--mono);font-size:12px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.n.click{cursor:pointer}
+.n.sel rect,.n.cur rect{fill:var(--accent);stroke:var(--accent)} .n.sel text,.n.cur text{fill:#fff}
+.n.vis rect{fill:var(--accent-soft);stroke:var(--accent)}
+.n.bad rect{fill:var(--bad-soft);stroke:var(--bad);stroke-width:2.2}
+.n.new rect{fill:var(--warm-soft);stroke:var(--warm)}
+.n.leaf rect{stroke-dasharray:3 2}
+.n.dim{opacity:.4}
+.bdg circle{fill:var(--warm)} .bdg text{fill:#fff;font-family:var(--body);font-size:9.5px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.lvl{font-family:var(--body);font-size:10.5px;fill:var(--muted)}
+.cvgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+.fcbox{display:flex;justify-content:center}
+.codebox{font-family:var(--mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 0;overflow-x:auto}
+.cl{display:grid;grid-template-columns:26px 1fr;gap:6px;padding:2px 10px;border-left:3px solid transparent;white-space:pre}
+.cl span{color:var(--muted);text-align:right}
+.cl code{font-family:inherit}
+.cl.ran{background:var(--accent-soft)}
+.cl.now{background:var(--warm-soft);border-left-color:var(--warm);font-weight:600}
+#cvfc{width:auto;max-width:none}
+.fe{fill:none;stroke:var(--edge);stroke-width:1.5}
+.fe.hot{stroke:var(--warm);stroke-width:3}
+.fe.past{stroke:var(--warm);stroke-opacity:.35;stroke-dasharray:5 4;stroke-width:2}
+.fyn{font-family:var(--body);font-size:10.5px;fill:var(--muted);font-weight:600}
+.flab{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1}
+.flabt{font-family:var(--mono);font-size:11px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.fn rect,.fn polygon{fill:var(--panel);stroke:var(--ink);stroke-width:1.4}
+.fn.term rect{fill:var(--bg)}
+.fn.vis rect,.fn.vis polygon{fill:var(--accent-soft);stroke:var(--accent)}
+.fn.cur rect,.fn.cur polygon{fill:var(--accent);stroke:var(--accent)}
+.fn text{font-family:var(--mono);font-size:11.5px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.fn.cur text{fill:#fff;font-weight:600}
+td.mono{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+tr.now td{background:var(--warm-soft)}
+code{font-family:var(--mono);font-size:.92em}
+@media (max-width:1000px){.cvgrid{grid-template-columns:1fr}}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}
+  nav .brand,nav .meter{width:100%}
+  .lab{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---- iOS / no-JavaScript support ---- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a,input,select,textarea,label,.choice,.n,.lbox,.fn,[role=button]{touch-action:manipulation;-webkit-tap-highlight-color:rgba(11,122,131,.18)}
+.js section.view{display:none}
+.js section.view.on{display:flex}
+#nojs{display:block;margin:0 0 18px;padding:14px 16px;border-radius:10px;border:2px solid var(--warm);background:var(--warm-soft);color:var(--ink);font-size:15px;line-height:1.5}
+#nojs b{display:block;font-size:16px;margin-bottom:4px}
+.js #nojs{display:none}
+main,.card,.readout,.cvgrid>*,.lab>*{min-width:0}
+@media (max-width:860px){nav{position:sticky;top:0;z-index:5;flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:8px 10px}
+ nav::-webkit-scrollbar{display:none} nav a{white-space:nowrap;flex:none} nav .brand,nav .meter{display:none}}
+.fcbox{display:block}.fcbox svg{display:block;margin:0 auto}
+@media (max-width:1000px){.cvgrid{grid-template-columns:minmax(0,1fr)!important}}
+@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.lab{grid-template-columns:minmax(0,1fr)!important}}
+@media (max-width:860px){input,select,textarea{font-size:16px!important}
+ nav{padding:12px 10px;gap:2px} nav a{padding:7px 8px;font-size:13px} nav .brand{padding-bottom:6px}
+ main{padding:20px 14px 48px} .card{padding:14px} h1{font-size:26px} h2{font-size:21px}}
+
+/* list / hash diagrams */
+.lbox rect{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+.lbox text{font-family:var(--mono);font-size:12px;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.lbox .sub{font-size:9.5px;fill:var(--muted)}
+.lbox.click{cursor:pointer}
+.lbox.sel rect,.lbox.cur rect{fill:var(--accent);stroke:var(--accent)} .lbox.sel text,.lbox.cur text{fill:#fff}
+.lbox.vis rect{fill:var(--accent-soft);stroke:var(--accent)}
+.lbox.new rect{fill:var(--warm-soft);stroke:var(--warm)}
+.lbox.cut{opacity:.35}
+.lbox.prev rect{stroke:var(--accent);stroke-width:2.4;stroke-dasharray:4 2}
+.ln{stroke:var(--edge);stroke-width:1.6;fill:none}
+.ln.hot{stroke:var(--warm);stroke-width:3}
+.ln.dead{stroke-dasharray:3 3;opacity:.4}
+.ptr{font-family:var(--body);font-size:11px;font-weight:700}
+.nul{font-family:var(--mono);font-size:11px;font-weight:600;fill:var(--bad);dominant-baseline:central}
+.bidx rect{fill:var(--bg);stroke:var(--ink);stroke-width:1.2}
+.bidx text{font-family:var(--mono);font-size:12px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.bidx.hl rect{fill:var(--warm-soft);stroke:var(--warm);stroke-width:2}
+.calc{font-family:var(--mono);font-size:13px;fill:var(--ink)}
+</style>
+</head>
+<body>
+<div class="app">
+<nav id="nav">
+  <div class="brand">Doubly Linked List<small>Self-guide built from your learning kernel</small></div>
+  <a href="#start" data-v="start"><span class="dot">⌂</span>Start here</a>
+  <a href="#kernel" data-v="kernel"><span class="dot">K</span>Kernel &amp; checks</a>
+  <a href="#step-1" data-v="step-1"><span class="dot" id="d1">1</span><span class="sn" data-i="0">Two pointers per node</span></a>
+  <a href="#step-2" data-v="step-2"><span class="dot" id="d2">2</span><span class="sn" data-i="1">Building it as a series</span></a>
+  <a href="#step-3" data-v="step-3"><span class="dot" id="d3">3</span><span class="sn" data-i="2">Navigating both ways</span></a>
+  <a href="#step-4" data-v="step-4"><span class="dot" id="d4">4</span><span class="sn" data-i="3">Deleting: two links</span></a>
+  <a href="#code" data-v="code"><span class="dot">{ }</span>Code &amp; flowchart</a>
+  <a href="#playground" data-v="playground"><span class="dot">✎</span>Playground</a>
+  <div class="meter"><span id="navmeter">0 complete</span><div class="bar"><i id="navbar" style="width:0%"></i></div></div>
+</nav>
+<main>
+<div id="nojs" role="note"><b>This preview can't run the interactive parts.</b>You're seeing a read-only view, probably the iPhone/iPad file preview (Quick Look) or WhatsApp's viewer, which don't run JavaScript. To use the diagrams, questions and flowcharts, open the online link in Safari, or open this file in an app that runs web pages (see the note that came with it). The text below is still readable.</div>
+
+<section class="view" id="v-start">
+  <div class="eyebrow">Self-guided tool</div>
+  <h1>Learn doubly linked lists in four steps</h1>
+  <p style="max-width:72ch;margin:0">The same playlist, Music 01 … Music N, but every node now also points back to the one before it. Each step takes one kernel statement, explains it, gives you a live list to explore, then asks questions. Every answer needs a short reason, graded ★ Perfect (every key idea), ✓ Right but not perfect (some of them) or ✗ Wrong. A question is complete with a correct answer and reasoning that is at least right.</p>
+  <div class="card">
+    <h3>Your progress</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Step</th><th class="num">Questions</th><th class="num">Complete</th><th class="num">★ Perfect</th><th>Status</th></tr></thead>
+      <tbody id="ptable"></tbody>
+      <tfoot><tr><th>Overall</th><th class="num" id="ptot"></th><th class="num" id="pcor">0</th><th class="num" id="pperf">0</th><th id="ppct">0%</th></tr></tfoot>
+    </table></div>
+    <p class="callout" id="nextcall"></p>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--accent)"></i>Selected / current</span>
+    <span><i style="background:var(--accent-soft);border:1px solid var(--accent)"></i>Visited / on the path</span>
+    <span><i style="background:var(--warm-soft);border:1px solid var(--warm)"></i>New</span>
+    <span><i style="background:var(--warm)"></i>Link just changed / path taken</span>
+    <span><i style="background:var(--ok)"></i>Answer correct, reasoning ★ perfect</span>
+  </div>
+  <div class="row"><a class="btn primary" href="#step-1" style="text-decoration:none">Begin with step 1</a><button class="btn" id="reset">Clear my answers</button></div>
+</section>
+<section class="view" id="v-kernel">
+  <div class="eyebrow">Source</div>
+  <h2>The learning kernel and its checks</h2>
+  <p style="margin:0;max-width:70ch">These are the statements in DoublyLinkedListLearningKernel.xlsx, in order. Each becomes a step. Where a statement needs a qualifier, the check says so and the step teaches the qualified version.</p>
+  <div class="card scroll"><table><thead><tr><th>#</th><th>Kernel statement</th><th>Check</th></tr></thead><tbody id="ktable"><tr><td>1</td><td>A doubly linked list is a chain of nodes where each node holds data, a next pointer and a prev pointer; head.prev and tail.next are NULL</td><td>Accurate. Each node costs one extra pointer of memory compared with a singly linked list.</td></tr><tr><td>2</td><td>Build it as a series: element 1 makes head and tail point to the new node, elements 2 to N do node.prev = tail, tail.next = node, tail = node, and the loop stops after element N</td><td>Accurate. Order matters only in that tail must still point at the old last node while node.prev and tail.next are set; tail = node comes last.</td></tr><tr><td>3</td><td>It can be navigated in both directions: forward from head along next, or backward from tail along prev, each walk stopping at NULL</td><td>Accurate. Starting from the nearer end halves the worst-case walk: node k takes min(k − 1, N − k) moves.</td></tr><tr><td>4</td><td>Deleting a node X fixes two links: X.prev.next = X.next and X.next.prev = X.prev, with head or tail moving when X is at an end</td><td>Accurate, with the end cases spelled out: if X is the head there is no X.prev, so head = X.next; if X is the tail there is no X.next, so tail = X.prev. Given a pointer to X, no walk is needed.</td></tr></tbody></table></div>
+</section>
+<section class="view" id="v-step-1">
+  <div class="eyebrow">Step 1 of 4</div>
+  <h2>Two pointers per node: next and prev</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="0">“A doubly linked list is a chain of nodes where each node holds data, a next pointer and a prev pointer; head.prev and tail.next are NULL”</span></div>
+  <div class="kcheck good"><b>Kernel check.</b> <span class="kc" data-k="0">Accurate. Each node costs one extra pointer of memory compared with a singly linked list.</span></div>
+  <ul class="terms"><li>Each node has <span class="term">prev</span>, <span class="term">data</span> and <span class="term">next</span>. The upper arrows follow next and the lower arrows follow prev.</li><li><span class="term">head.prev</span> and <span class="term">tail.next</span> are NULL: those are the two ends.</li><li>The extra pointer costs memory, but every node knows both its neighbours.</li></ul>
+  <div class="card"><div class="lab"><div class="treebox"><svg id="dl1" role="img" aria-label="Doubly linked playlist"></svg></div><div class="readout"><h3>Click a node</h3><div class="stat hl"><span>Selected</span><b id="dl1sel"></b></div><div class="stat"><span>← prev</span><b id="dl1pv"></b></div><div class="stat"><span>next →</span><b id="dl1nx"></b></div><div class="stat"><span>Role</span><b id="dl1role"></b></div><p class="hint-line">5 nodes: 4 next links + 4 prev links = 8 non-NULL pointers.</p></div></div></div>
+  <div class="qs" data-step="1"></div>
+  <div class="next"><a class="btn" href="#kernel">Back</a><a class="btn primary" href="#step-2">Next: building it as a series</a></div>
+</section>
+<section class="view" id="v-step-2">
+  <div class="eyebrow">Step 2 of 4</div>
+  <h2>Building it as a series: three lines per element</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="1">“Build it as a series: element 1 makes head and tail point to the new node, elements 2 to N do node.prev = tail, tail.next = node, tail = node, and the loop stops after element N”</span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="1">Accurate. Order matters only in that tail must still point at the old last node while node.prev and tail.next are set; tail = node comes last.</span></div>
+  <ul class="terms"><li><span class="term">Element 1</span>: head == NULL, so head = tail = node and both its pointers stay NULL.</li><li><span class="term">Elements 2 … N</span>: node.prev = tail (link back), tail.next = node (link forward), tail = node (move on).</li><li>The loop stops after element N. Compared with a singly linked list, each element adds one extra line: the back link.</li></ul>
+  <div class="card"><div class="row"><label for="dl2n">N = <b id="dl2nv">5</b></label><input type="range" id="dl2n" min="3" max="6" value="5"><label for="dl2k">Element <b id="dl2kv">1</b></label><input type="range" id="dl2k" min="1" max="5" value="1" style="flex:1"></div><div class="cvgrid"><div class="readout"><h3>Code for this element</h3><div class="codebox" id="dl2code"></div></div><div class="readout"><h3>After this element</h3><div class="stat"><span>head</span><b id="dl2h"></b></div><div class="stat"><span>tail</span><b id="dl2t"></b></div><div class="stat hl"><span>Links made</span><b id="dl2l"></b></div></div></div><div class="treebox"><svg id="dl2" role="img" aria-label="List after this element"></svg></div><p class="hint-line" id="dl2note"></p></div>
+  <div class="qs" data-step="2"></div>
+  <div class="next"><a class="btn" href="#step-1">Back</a><a class="btn primary" href="#step-3">Next: navigating both ways</a></div>
+</section>
+<section class="view" id="v-step-3">
+  <div class="eyebrow">Step 3 of 4</div>
+  <h2>Navigating both ways</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="2">“It can be navigated in both directions: forward from head along next, or backward from tail along prev, each walk stopping at NULL”</span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="2">Accurate. Starting from the nearer end halves the worst-case walk: node k takes min(k − 1, N − k) moves.</span></div>
+  <ul class="terms"><li><span class="term">Forward</span>: temp = head, then temp = temp.next until NULL.</li><li><span class="term">Backward</span>: temp = tail, then temp = temp.prev until NULL.</li><li>To reach node k, start from the <span class="term">nearer end</span>: min(k − 1, N − k) moves.</li></ul>
+  <div class="card"><div class="row"><label for="dl3k">Reach node <b id="dl3kv">4</b></label><input type="range" id="dl3k" min="1" max="5" value="4"><div class="seg" role="group" aria-label="Direction"><button id="dl3f">From head</button><button id="dl3b">From tail</button><button id="dl3n" class="on">Nearer end</button></div></div><div class="treebox"><svg id="dl3" role="img" aria-label="Walking the list"></svg></div><div class="row" style="align-items:stretch"><div class="stat" style="flex:1"><span>From head</span><b id="dl3mf"></b></div><div class="stat" style="flex:1"><span>From tail</span><b id="dl3mb"></b></div><div class="stat hl" style="flex:1"><span>Moves used</span><b id="dl3m"></b></div></div></div>
+  <div class="qs" data-step="3"></div>
+  <div class="next"><a class="btn" href="#step-2">Back</a><a class="btn primary" href="#step-4">Next: deleting: two links</a></div>
+</section>
+<section class="view" id="v-step-4">
+  <div class="eyebrow">Step 4 of 4</div>
+  <h2>Deleting a node: fix two links</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="3">“Deleting a node X fixes two links: X.prev.next = X.next and X.next.prev = X.prev, with head or tail moving when X is at an end”</span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="3">Accurate, with the end cases spelled out: if X is the head there is no X.prev, so head = X.next; if X is the tail there is no X.next, so tail = X.prev. Given a pointer to X, no walk is needed.</span></div>
+  <ul class="terms"><li>To remove X: <span class="term">X.prev.next = X.next</span> (the forward link skips X) and <span class="term">X.next.prev = X.prev</span> (the backward link skips X).</li><li>If X is the <span class="term">head</span>, head = X.next instead. If X is the <span class="term">tail</span>, tail = X.prev instead.</li><li>Because X knows both neighbours, no walk is needed once you hold X.</li></ul>
+  <div class="card"><p class="hint-line">Click the node to delete.</p><div class="treebox"><svg id="dl4" role="img" aria-label="List before the delete"></svg></div><div class="row" style="align-items:stretch"><div class="stat hl" style="flex:1"><span>Forward link</span><b id="dl4a"></b></div><div class="stat hl" style="flex:1"><span>Backward link</span><b id="dl4b"></b></div></div><h3>After</h3><div class="treebox"><svg id="dl4c" role="img" aria-label="List after the delete"></svg></div></div>
+  <div class="qs" data-step="4"></div>
+  <div class="next"><a class="btn" href="#step-3">Back</a><a class="btn primary" href="#code">Next: code & flowchart</a></div>
+</section>
+<section class="view" id="v-code">
+  <div class="eyebrow">Code &amp; flowchart</div>
+  <h2>Watch the code run: flowchart, values and conditions</h2>
+  <p style="margin:0;max-width:74ch">Pick an operation and step through it. The highlighted line is the code being run. In the flowchart, orange arrows are the path taken in the current loop, each labelled with the condition checked and the actual values; faded arrows were taken in earlier loops. The diagram below shows the data at that exact step.</p>
+  <div class="card">
+    <div class="row">
+      <div class="seg" role="group" aria-label="Operation" id="cvops"></div>
+      <span class="row" id="cvkrow"><label for="cvk" id="cvkl">Value</label><input type="text" id="cvk" style="width:120px"></span>
+      <label for="cvsrc">Data</label><select id="cvsrc"></select>
+      <button class="btn primary" id="cvgo">Run</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="cvprev">◀ Back</button><button class="btn" id="cvnext">Step ▶</button><button class="btn" id="cvplay">▶▶ Play</button>
+      <input type="range" id="cvs" min="1" max="1" value="1" style="flex:1;min-width:140px" aria-label="Step">
+      <b id="cvsv" style="font-family:var(--mono)"></b>
+      <button class="btn primary" id="cvkeep" style="display:none">Keep this change</button>
+    </div>
+    <p class="callout" id="cvnote" style="font-size:16px"></p>
+    <h3>Flowchart</h3>
+    <div class="treebox fcbox"><svg id="cvfc" role="img" aria-label="Flowchart with the path taken highlighted"></svg></div>
+    <div class="cvgrid">
+      <div class="readout"><h3>Pseudocode</h3><div class="codebox" id="cvcode"></div></div>
+      <div class="readout"><h3>Variables</h3><div class="readout" id="cvvars"></div></div>
+    </div>
+    <h3>Data at this step</h3>
+    <div class="treebox big"><svg id="cvdata" role="img" aria-label="Data at this step"></svg></div>
+    <h3>Trace, newest first</h3>
+    <div class="scroll" style="max-height:300px;overflow-y:auto"><table><thead><tr><th class="num">#</th><th>Loop</th><th>Box reached</th><th>Arrow taken: condition → result</th><th>What happens</th></tr></thead><tbody id="cvtrace"></tbody></table></div>
+  </div>
+</section>
+<section class="view" id="v-playground">
+  <div class="eyebrow">Free play</div>
+<h2>Build your own doubly linked list</h2><p style="margin:0;max-width:72ch">Add, remove and find songs, and read the list in both directions.</p><div class="card"><div class="row"><label for="pv">Song</label><input type="text" id="pv" value="Music 06" style="width:140px"><button class="btn primary" id="pap">Append</button><button class="btn" id="ppre">Prepend</button><button class="btn" id="pdel">Delete</button><button class="btn" id="pfind">Find from nearer end</button><button class="btn" id="preset">Reset example</button><button class="btn" id="pclr">Clear</button></div><p class="callout" id="pmsg" style="font-size:16px"></p><div class="treebox big"><svg id="pgl" role="img" aria-label="Your list"></svg></div><div class="row" style="align-items:stretch"><div class="stat" style="flex:1"><span>Length</span><b id="ps1"></b></div><div class="stat" style="flex:1"><span>head</span><b id="ps2"></b></div><div class="stat" style="flex:1"><span>tail</span><b id="ps3"></b></div></div><p class="hint-line" id="ptrav"></p><p class="hint-line" id="ptravb"></p></div>
+</section>
+</main>
+</div>
+<script>
+(function(){
+"use strict";
+const BANK=/*QBANK*/{"topic": "Doubly Linked List", "min_words": 4, "stepnames": ["Two pointers per node", "Building it as a series", "Navigating both ways", "Deleting: two links"], "checks": ["Accurate. Each node costs one extra pointer of memory compared with a singly linked list.", "Accurate. Order matters only in that tail must still point at the old last node while node.prev and tail.next are set; tail = node comes last.", "Accurate. Starting from the nearer end halves the worst-case walk: node k takes min(k − 1, N − k) moves.", "Accurate, with the end cases spelled out: if X is the head there is no X.prev, so head = X.next; if X is the tail there is no X.next, so tail = X.prev. Given a pointer to X, no walk is needed."], "steps": {"1": [{"p": "In a doubly linked list Music 01 … Music 05, what is Music 01's prev?", "a": "NULL", "o": ["NULL", "Music 02", "Music 05"], "h": "Music 01 is the first node.", "w": "NULL: nothing comes before the head.", "ideas": [{"label": "Music 01 is the first node (the head)", "terms": ["first", "head", "start", "beginning"]}, {"label": "nothing comes before it, so prev is NULL", "terms": ["null", "nothing before", "no node before", "no previous"]}]}, {"p": "How many pointers (next and prev together) are not NULL in a 5-node doubly linked list?", "a": 8, "h": "4 forward links and 4 backward links.", "w": "8: each of the 4 neighbour pairs is linked both ways.", "ideas": [{"label": "each neighbour pair is linked both ways", "terms": ["both ways", "both direction", "forward and backward", "next and prev", "two per", "x2", "twice", "4 next", "4 prev"]}, {"label": "4 + 4 = 8", "terms": ["8", "eight", "4 + 4", "4+4"]}]}, {"p": "Which pointer lets you start at the last node without walking?", "a": "tail", "o": ["head", "tail"], "h": "Which pointer is kept on the last node?", "w": "tail: it points straight at the last node.", "ideas": [{"label": "tail points straight at the last node", "terms": ["last", "end", "points to the last", "points at the last"]}, {"label": "so no walk from head is needed", "terms": ["no walk", "without walking", "directly", "straight", "no need", "o(1)"]}]}], "2": [{"p": "Appending element k (k ≥ 2): how many pointer assignments?", "a": 3, "h": "node.prev, tail.next and tail.", "w": "3: node.prev = tail, tail.next = node, tail = node.", "ideas": [{"label": "the three lines: node.prev, tail.next and tail", "terms": ["node.prev", "tail.next", "tail = node", "prev", "next"]}, {"label": "three", "terms": ["3", "three"]}]}, {"p": "When appending Music 04, node.prev is set to?", "a": "Music 03", "o": ["Music 03", "Music 05", "NULL"], "h": "It points back to the current tail.", "w": "Music 03: the tail before Music 04 arrives.", "ideas": [{"label": "node.prev points to the current (old) tail", "terms": ["tail", "old tail", "current", "last node", "before"]}, {"label": "which is Music 03", "terms": ["music 03", "03"]}]}, {"p": "For element 1, what is node.prev?", "a": "NULL", "o": ["NULL", "head", "tail"], "h": "The list was empty: there is no tail yet.", "w": "NULL: the first node has nothing before it.", "ideas": [{"label": "the list was empty, so there is nothing before it", "terms": ["empty", "no tail", "nothing before", "first", "no node"]}, {"label": "prev stays NULL", "terms": ["null"]}]}], "3": [{"p": "In a 10-node list, fewest moves to reach node 9 (start from the nearer end)?", "a": 1, "h": "Node 9 is next to the tail.", "w": "1: from tail (node 10) one prev step.", "ideas": [{"label": "start from the tail, the nearer end", "terms": ["tail", "end", "backward", "nearer", "closer", "prev"]}, {"label": "one step back", "terms": ["1", "one", "single"]}]}, {"p": "A backward walk from tail stops when temp is?", "a": "NULL", "o": ["NULL", "head", "Music 01"], "h": "What is head.prev?", "w": "NULL: after visiting the head, temp = head.prev = NULL.", "ideas": [{"label": "after the head comes head.prev", "terms": ["head.prev", "after the head", "past the head", "before the first", "first node"]}, {"label": "which is NULL", "terms": ["null"]}]}, {"p": "In a 5-node list, how many moves from head reach node 3?", "a": 2, "h": "k − 1 forward moves.", "w": "2: node 1 → node 2 → node 3.", "ideas": [{"label": "start at head (node 1) and move forward", "terms": ["head", "forward", "next", "node 1", "start"]}, {"label": "k − 1 = 2 moves", "terms": ["2", "two", "k - 1", "k-1"]}]}], "4": [{"p": "Deleting Music 03 from 5 nodes: how many pointers change?", "a": 2, "h": "One forward link and one backward link.", "w": "2: Music 02.next and Music 04.prev.", "ideas": [{"label": "one forward and one backward link are fixed", "terms": ["next and prev", "prev and next", "both", "forward", "backward", "music 02.next", "music 04.prev"]}, {"label": "two pointers", "terms": ["2", "two"]}]}, {"p": "Which pointer of Music 04 changes?", "a": "prev", "o": ["next", "prev"], "h": "Music 04 used to point back at Music 03.", "w": "prev: it now points back to Music 02.", "ideas": [{"label": "Music 04 pointed back at the deleted node", "terms": ["back", "pointed", "deleted", "music 03", "x.next.prev"]}, {"label": "so its prev now points to Music 02", "terms": ["music 02", "02", "skip"]}]}, {"p": "Deleting the tail Music 05: which pointer variable must move?", "a": "tail", "o": ["head", "tail"], "h": "There is no node after Music 05 to fix.", "w": "tail: Music 05 is the last node, with nothing after it, so tail moves back to Music 04 (tail = X.prev).", "ideas": [{"label": "there is no node after the tail to fix", "terms": ["no next", "nothing after", "no node after", "last", "end"]}, {"label": "so tail moves back to X.prev", "terms": ["x.prev", "moves back", "music 04", "tail = "]}]}, {"p": "Holding a pointer to the node already, how many walk moves does the delete need?", "a": 0, "h": "prev and next are inside the node itself.", "w": "0: X.prev and X.next give both neighbours directly.", "ideas": [{"label": "the node knows both neighbours through prev and next", "terms": ["prev and next", "both neighbours", "both neighbors", "x.prev", "x.next", "inside"]}, {"label": "so no walk is needed", "terms": ["0", "zero", "no walk", "none", "o(1)"]}]}]}}/*END*/;
+const Q=BANK.steps, MINW=BANK.min_words||4, STEPNAMES=BANK.stepnames, CHECKS=BANK.checks;
+const KERNEL=/*KERNEL*/["A doubly linked list is a chain of nodes where each node holds data, a next pointer and a prev pointer; head.prev and tail.next are NULL", "Build it as a series: element 1 makes head and tail point to the new node, elements 2 to N do node.prev = tail, tail.next = node, tail = node, and the loop stops after element N", "It can be navigated in both directions: forward from head along next, or backward from tail along prev, each walk stopping at NULL", "Deleting a node X fixes two links: X.prev.next = X.next and X.next.prev = X.prev, with head or tail moving when X is at an end"]/*ENDK*/;
+const TOTAL=Object.keys(Q).reduce((s,k)=>s+Q[k].length,0);
+const SVGNS="http://www.w3.org/2000/svg";
+const STORE="dll-selfguide-v1";
+let state={};
+try{state=JSON.parse(localStorage.getItem(STORE)||"{}")||{}}catch(e){state={}}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(state))}catch(e){}}
+function el(t,a,p){const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+document.querySelectorAll(".sn").forEach(x=>x.textContent=STEPNAMES[+x.dataset.i]);
+document.querySelectorAll(".kt").forEach(x=>x.textContent="“"+KERNEL[+x.dataset.k]+"”");
+document.querySelectorAll(".kc").forEach(x=>x.textContent=CHECKS[+x.dataset.k]);
+const kt=document.getElementById("ktable");kt.innerHTML="";
+KERNEL.forEach((s,i)=>{const tr=document.createElement("tr");tr.innerHTML=`<td>${i+1}</td><td>${s}</td><td>${CHECKS[i]} <a href="#step-${i+1}">Step ${i+1}</a></td>`;kt.appendChild(tr)});
+function norm(v){return String(v).trim().toLowerCase()}
+function same(v,a){if(norm(v)===norm(a))return true;const x=parseFloat(v),y=parseFloat(a);
+ return typeof a==="number"&&!isNaN(x)&&/^\s*-?[\d.]+\s*$/.test(String(v))&&Math.abs(x-y)<1e-9}
+function nz(s){return String(s).toLowerCase().replace(/[×*]/g,"x").replace(/[−–—]/g,"-").replace(/→/g,"->").replace(/\b(times|multiplied by)\b/g," x ").replace(/\s+/g," ").trim()}
+function hasTerm(text,t){const T=nz(t);
+ if(/^[a-z0-9]{1,3}$/.test(T))return new RegExp("(^|[^a-z0-9])"+T+"($|[^a-z0-9])").test(text);
+ if(/^[0-9.]+$/.test(T))return new RegExp("(^|[^0-9.])"+T.replace(/\./g,"\\.")+"($|[^0-9])").test(text);
+ return text.includes(T)||text.replace(/ /g,"").includes(T.replace(/ /g,""))}
+/* three-level reasoning grade: perfect = every key idea; partial = at least one; wrong = none, too short, or a known misconception */
+const LEV={perfect:["★ Perfect","g"],partial:["✓ Right, but not perfect","a"],wrong:["✗ Wrong","r"]};
+function judge(q,raw){const text=nz(raw||""),words=text.split(" ").filter(Boolean).length;
+ if(!text)return{lev:"wrong",msg:"Add a sentence explaining why."};
+ if(words<MINW)return{lev:"wrong",msg:`Too short: explain in at least ${MINW} words.`};
+ const mis=(q.wrong||[]).filter(w=>w.terms.some(t=>hasTerm(text,t)));
+ if(mis.length)return{lev:"wrong",msg:"This reasoning contains a mistake: "+mis.map(w=>w.label).join("; ")+"."};
+ const hit=q.ideas.filter(i=>i.terms.some(t=>hasTerm(text,t))),miss=q.ideas.filter(i=>!hit.includes(i));
+ if(!miss.length)return{lev:"perfect",msg:"You covered "+hit.map(i=>i.label).join(" and ")+"."};
+ if(hit.length)return{lev:"partial",msg:"You covered "+hit.map(i=>i.label).join(" and ")+". For a perfect answer, also explain "+miss.map(i=>i.label).join(", and ")+"."};
+ return{lev:"wrong",msg:"Your reasoning doesn't show the key idea yet. Explain "+miss.map(i=>i.label).join(", and ")+"."}}
+function renderQs(){
+ document.querySelectorAll(".qs").forEach(box=>{
+  const s=box.dataset.step; box.innerHTML="<h3>Check yourself</h3><p class='hint-line'>Answer, then say why in your own words. Reasoning is graded ★ Perfect, ✓ Right but not perfect, or ✗ Wrong. A question is complete with a correct answer and reasoning that is at least right.</p>";
+  Q[s].forEach((q,i)=>{
+   const id=s+"."+(i+1), st=state[id]||{}, k=id.replace(".","_"), checked=st.checked;
+   const cls=!checked?"":(st.ok&&st.lev==="perfect")?" ok":(st.ok||st.lev!=="wrong")?" part":" bad";
+   const d=document.createElement("div"); d.className="q"+cls;
+   const ans=q.o?q.o.map(o=>`<button class="choice${st.v===o?" sel":""}" data-v="${o}" aria-pressed="${st.v===o}">${o}</button>`).join("")
+     :`<input type="text" inputmode="decimal" id="in${k}" aria-label="Your answer to Q${i+1}" value="${st.v!=null?String(st.v).replace(/"/g,"&quot;"):""}">`;
+   d.innerHTML=`<div class="p"><span>Q${i+1}</span>${q.p}</div><div class="ans">${ans}</div>
+    <label class="why" for="why${k}">Why? Justify your answer</label>
+    <textarea id="why${k}" rows="2" placeholder="Because …"></textarea>
+    <div class="row"><button class="btn primary chk">Check answer and reasoning</button></div><div class="fb"></div>`;
+   const ta=d.querySelector("textarea"); ta.value=st.r||"";
+   const fb=d.querySelector(".fb");
+   if(checked){const L=LEV[st.lev];
+    fb.innerHTML=`<div><b class="${st.ok?"g":"r"}">${st.ok?"✓ Answer correct.":"✗ Answer not yet."}</b>${st.ok?q.w:"Hint: "+q.h}</div>
+     <div><b class="${L[1]}">Reasoning: ${L[0]}.</b>${st.rmsg}</div>`}
+   if(q.o)d.querySelectorAll(".choice").forEach(b=>b.onclick=()=>{state[id]=Object.assign({},state[id],{v:b.dataset.v,r:ta.value,checked:false});save();renderQs();refresh();
+     const t=document.getElementById("why"+k);if(t)t.focus()});
+   d.querySelector(".chk").onclick=()=>{
+    const v=q.o?(state[id]||{}).v:d.querySelector("input").value;
+    if(v==null||String(v).trim()===""){fb.innerHTML='<div><b class="r">Pick or type an answer first.</b></div>';return}
+    const j=judge(q,ta.value);
+    state[id]={v,ok:same(v,q.a),r:ta.value,lev:j.lev,rmsg:j.msg,checked:true};save();renderQs();refresh()};
+   box.appendChild(d)});
+  const c=countStep(s),pf=countPerfect(s),p=document.createElement("p");p.className="hint-line";
+  p.textContent=`${c} of ${Q[s].length} complete, ${pf} perfect`+(c===Q[s].length?". Step complete.":"");box.appendChild(p)});
+}
+function qst(s,i){const t=state[s+"."+(i+1)];return t&&t.checked?t:null}
+function countStep(s){return Q[s].filter((q,i)=>{const t=qst(s,i);return t&&t.ok&&t.lev&&t.lev!=="wrong"}).length}
+function countPerfect(s){return Q[s].filter((q,i)=>{const t=qst(s,i);return t&&t.ok&&t.lev==="perfect"}).length}
+const STEPS_=Object.keys(Q);
+function refresh(){
+ let tot=0,perf=0,next=null;const tb=document.getElementById("ptable");tb.innerHTML="";
+ STEPS_.forEach((s,ix)=>{const c=countStep(s),pf=countPerfect(s),n=Q[s].length;tot+=c;perf+=pf;
+  const status=c===n?"done":c>0?"part":"none"; if(c<n&&!next)next=s;
+  const dot=document.getElementById("d"+s);if(dot){dot.className="dot"+(status==="done"?" done":status==="part"?" part":"");dot.textContent=status==="done"?"✓":s}
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td><a href="#step-${s}">${s}. ${STEPNAMES[ix]}</a></td><td class="num">${n}</td><td class="num">${c}</td><td class="num">${pf}</td><td><span class="pill ${status}">${status==="done"?"Done":status==="part"?"In progress":"Not started"}</span></td>`;
+  tb.appendChild(tr)});
+ const pct=Math.round(tot/TOTAL*100);
+ document.getElementById("pcor").textContent=tot;document.getElementById("ptot").textContent=TOTAL;document.getElementById("pperf").textContent=perf;
+ document.getElementById("ppct").textContent=pct+"%";
+ document.getElementById("navmeter").textContent=`${tot} of ${TOTAL} complete · ${perf} perfect`;
+ document.getElementById("navbar").style.width=pct+"%";
+ document.getElementById("nextcall").textContent=next?`Next: step ${next}, ${STEPNAMES[+next-1].toLowerCase()}`:(perf<TOTAL?`All steps complete. ${TOTAL-perf} answers can still be made perfect, or open the playground.`:"Everything complete and perfect. Open the playground.");
+}
+
+document.getElementById("reset").onclick=()=>{state={};save();renderQs();refresh()};
+/* ===== Generic Code & flowchart engine =====
+ Topic supplies KIT.ops = {opKey:{label, input:{label,def,type}|null, keeps?, W,H, code:[...], nodes:{id:{t,x,y,w?,text,line,la?}}, edges:{id:{pts,yes?,no?,loop?,lp?,la?}}, run(data,input)->steps}}
+ and KIT.cv = {sources:[{id,label,get()}], draw(svg, step, opKey), vars(step, opKey, input)->[[name,value]], keep(step, sourceId)}.
+ A step: {n, via, lab, it, note, done?, ...topic fields}. */
+let cvOp=null,cvSteps=[],cvI=0,cvTimer=null,cvInput=null;
+function cvInit(){
+ const ops=Object.keys(KIT.ops);cvOp=ops[0];
+ const seg=document.getElementById("cvops");seg.innerHTML=ops.map((k,i)=>`<button data-op="${k}"${i===0?' class="on"':""}>${KIT.ops[k].label}</button>`).join("");
+ const src=document.getElementById("cvsrc");src.innerHTML=KIT.cv.sources.map(s=>`<option value="${s.id}">${s.label}</option>`).join("");
+ seg.querySelectorAll("button").forEach(b=>b.onclick=()=>{cvOp=b.dataset.op;seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));cvSetInput();cvRun()});
+ document.getElementById("cvgo").onclick=cvRun;document.getElementById("cvk").onkeydown=e=>{if(e.key==="Enter")cvRun()};
+ src.onchange=cvRun;
+ document.getElementById("cvprev").onclick=()=>{stopPlay();if(cvI>0){cvI--;cvShow()}};
+ document.getElementById("cvnext").onclick=()=>{stopPlay();if(cvI<cvSteps.length-1){cvI++;cvShow()}};
+ document.getElementById("cvs").oninput=e=>{stopPlay();cvI=+e.target.value-1;cvShow()};
+ document.getElementById("cvplay").onclick=()=>{if(cvTimer){stopPlay();return}
+  if(cvI>=cvSteps.length-1)cvI=-1;document.getElementById("cvplay").textContent="❚❚ Pause";
+  cvTimer=setInterval(()=>{if(cvI>=cvSteps.length-1){stopPlay();return}cvI++;cvShow()},900)};
+ document.getElementById("cvkeep").onclick=()=>{const st=cvSteps[cvSteps.length-1];KIT.cv.keep(st,src.value);cvRun();
+  document.getElementById("cvnote").textContent="Kept. Run another operation on the updated data."};
+ cvSetInput();cvRun();
+}
+function cvSetInput(){const op=KIT.ops[cvOp],row=document.getElementById("cvkrow");
+ if(!op.input){row.style.display="none";return}
+ row.style.display="flex";document.getElementById("cvkl").textContent=op.input.label;
+ const k=document.getElementById("cvk");k.type=op.input.type||"text";k.value=op.input.def}
+function cvParse(){const op=KIT.ops[cvOp];if(!op.input)return null;const v=document.getElementById("cvk").value.trim();
+ return (op.input.type==="number")?parseFloat(v):v}
+function stopPlay(){if(cvTimer){clearInterval(cvTimer);cvTimer=null;document.getElementById("cvplay").textContent="▶▶ Play"}}
+function cvRun(){stopPlay();cvInput=cvParse();
+ if(KIT.ops[cvOp].input&&(cvInput===""||(typeof cvInput==="number"&&isNaN(cvInput)))){document.getElementById("cvnote").textContent="Type a value first.";return}
+ const srcId=document.getElementById("cvsrc").value,data=KIT.cv.sources.find(s=>s.id===srcId).get();
+ cvSteps=KIT.ops[cvOp].run(JSON.parse(JSON.stringify(data)),cvInput);cvI=0;
+ const sl=document.getElementById("cvs");sl.max=cvSteps.length;sl.value=1;cvShow()}
+function cvShow(){
+ const F=KIT.ops[cvOp],st=cvSteps[cvI];if(!st)return;
+ document.getElementById("cvs").value=cvI+1;document.getElementById("cvsv").textContent=`${cvI+1} / ${cvSteps.length}`;
+ const done=new Set(cvSteps.slice(0,cvI).map(s=>F.nodes[s.n].line)),curLine=F.nodes[st.n].line;
+ document.getElementById("cvcode").innerHTML=F.code.map((l,i)=>`<div class="cl${i===curLine?" now":done.has(i)?" ran":""}"><span>${i+1}</span><code>${l.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</code></div>`).join("");
+ const V=KIT.cv.vars(st,cvOp,cvInput).concat([["loop",st.it],["condition",st.lab||"—"]]);
+ document.getElementById("cvvars").innerHTML=V.map(([a,b])=>`<div class="stat"><span>${a}</span><b>${b}</b></div>`).join("");
+ document.getElementById("cvnote").textContent=`Step ${cvI+1}: ${st.note}`;
+ const svg=document.getElementById("cvfc");svg.innerHTML="";svg.setAttribute("viewBox",`0 0 ${F.W} ${F.H}`);svg.setAttribute("width",F.W*1.12);svg.setAttribute("height",F.H*1.12);
+ const defs=el("defs",{},svg);[["fa","var(--edge)"],["fh","var(--warm)"]].forEach(([id,c])=>{const m=el("marker",{id,viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto"},defs);el("path",{d:"M0,0L10,5L0,10z",style:"fill:"+c},m)});
+ const taken=new Map(),past=new Set(),visN=new Set();
+ cvSteps.slice(0,cvI+1).forEach(s=>{if(!s.via)return;if(s.it===st.it){taken.set(s.via,s.lab);visN.add(s.n)}else past.add(s.via)});
+ const g1=el("g",{},svg),g2=el("g",{},svg),g3=el("g",{},svg),g4=el("g",{},svg);
+ Object.entries(F.edges).forEach(([id,e])=>{const hot=taken.has(id),ps=!hot&&past.has(id);
+  el("polyline",{points:e.pts.map(p=>p.join(",")).join(" "),class:"fe"+(hot?" hot":ps?" past":""),"marker-end":`url(#${hot?"fh":"fa"})`},hot?g2:g1);
+  if(e.yes||e.no){const [x,y]=e.pts[0],[x2,y2]=e.pts[1];const lx=x+(x2>x?14:x2<x?-14:12),ly=y+(y2>y?16:-6);
+   el("text",{x:lx,y:ly,class:"fyn","text-anchor":x2<x?"end":"start"},g1).textContent=e.yes?"yes":"no"}
+  if(hot&&taken.get(id)){const lab=taken.get(id);
+   const vertical=!e.lp&&e.pts.length===2&&e.pts[0][0]===e.pts[1][0],horiz=!e.lp&&e.pts.length===2&&e.pts[0][1]===e.pts[1][1];
+   let [lx,ly]=e.lp||[(e.pts[0][0]+e.pts[e.pts.length-1][0])/2,(e.pts[0][1]+e.pts[e.pts.length-1][1])/2];
+   const w=lab.length*6.4+14;let bx;
+   if(horiz){lx=Math.max(e.pts[0][0],e.pts[1][0]);ly=e.pts[0][1]-29;bx=e.pts[1][0]>e.pts[0][0]?lx:lx-w}
+   else{if(vertical)lx+=8;bx=(vertical||e.la)?lx+(e.la?6:0):lx-w/2}
+   const lg=el("g",{},g4);el("rect",{x:bx,y:ly-10,width:w,height:19,rx:5,class:"flab"},lg);el("text",{x:bx+w/2,y:ly,class:"flabt"},lg).textContent=lab}});
+ Object.entries(F.nodes).forEach(([id,n])=>{const w=n.w||(n.t==="proc"?170:190),cls="fn "+n.t+(id===st.n?" cur":visN.has(id)?" vis":"");
+  const g=el("g",{class:cls,transform:`translate(${n.x},${n.y})`},g3);
+  if(n.t==="dec")el("polygon",{points:`${-w/2},0 0,-30 ${w/2},0 0,30`},g);
+  else el("rect",{x:-w/2,y:-17,width:w,height:34,rx:n.t==="term"?17:4},g);
+  el("text",{},g).textContent=n.text});
+ KIT.cv.draw(document.getElementById("cvdata"),st,cvOp);
+ document.getElementById("cvkeep").style.display=(F.keeps&&st.done&&cvI===cvSteps.length-1)?"inline-block":"none";
+ document.getElementById("cvtrace").innerHTML=cvSteps.slice(0,cvI+1).map((s,i)=>`<tr${i===cvI?' class="now"':""}><td class="num">${i+1}</td><td>${s.it}</td><td>${F.nodes[s.n].text}</td><td class="mono">${s.lab||"—"}</td><td>${s.note}</td></tr>`).reverse().join("");
+}
+
+/* ======== topic ======== */
+/* drawList(svg, arr, o): singly or doubly linked list.
+ o.dbl  : draw prev links (lower arrows)          o.cls(i) : extra class for node i
+ o.ptrs : [{label, i, col, dashed}]  (i = -1 → points at NULL after the list; stacked automatically)
+ o.hotNext / o.hotPrev : arrays of node indexes whose next / prev link is highlighted
+ o.cut  : index of a node being removed (dimmed, bypass arcs drawn)       o.click(i)
+ o.float: label of a node made but not linked yet (drawn under the list)  o.minW */
+function drawList(svg,arr,o){
+ o=o||{};svg.innerHTML="";
+ const dbl=!!o.dbl,bw=dbl?120:104,gap=46,x0=dbl?70:56,yb=78,bh=34;
+ const n=arr.length,W=Math.max(o.minW||560,x0+n*(bw+gap)+70),H=o.float?210:(dbl?170:150);
+ svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+ const defs=el("defs",{},svg);
+ [["la","var(--edge)"],["lh","var(--warm)"],["lc","var(--accent)"]].forEach(([id,c])=>{const m=el("marker",{id:svg.id+id,viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto"},defs);el("path",{d:"M0,0L10,5L0,10z",style:"fill:"+c},m)});
+ const X=i=>x0+i*(bw+gap);
+ const hotN=new Set(o.hotNext||[]),hotP=new Set(o.hotPrev||[]);
+ if(!n){el("text",{x:x0,y:yb+bh/2,class:"nul"},svg).textContent="head = NULL (empty list)";}
+ const lines=el("g",{},svg),boxes=el("g",{},svg),top=el("g",{},svg);
+ for(let i=0;i<n;i++){
+  const x=X(i),cut=o.cut===i;
+  // next link
+  const yN=dbl?yb+11:yb+bh/2,xs=x+bw-12,xe=i<n-1?X(i+1):X(i)+bw+gap-4;
+  if(!(o.cut===i-1&&false)){
+   const hot=hotN.has(i),dead=(o.cut!=null&&(i===o.cut||i===o.cut-1)&&!hot);
+   if(i<n-1&&!(o.hideNext||[]).includes(i))el("line",{x1:xs,y1:yN,x2:xe-2,y2:yN,class:"ln"+(hot?" hot":"")+(dead?" dead":""),"marker-end":`url(#${svg.id}${hot?"lh":"la"})`},lines);
+   else{el("line",{x1:xs,y1:yN,x2:xe-6,y2:yN,class:"ln"+(hot?" hot":""),"marker-end":`url(#${svg.id}${hot?"lh":"la"})`},lines);
+    el("text",{x:xe-2,y:yN,class:"nul"},lines).textContent="NULL"}
+  }
+  if(dbl){const yP=yb+bh-9,hot=hotP.has(i),dead=(o.cut!=null&&(i===o.cut||i===o.cut+1)&&!hot);
+   if(i>0&&!(o.hidePrev||[]).includes(i))el("line",{x1:x+12,y1:yP,x2:X(i-1)+bw+2,y2:yP,class:"ln"+(hot?" hot":"")+(dead?" dead":""),"marker-end":`url(#${svg.id}${hot?"lh":"la"})`},lines);
+   else{el("line",{x1:x+12,y1:yP,x2:x-gap+40,y2:yP,class:"ln"+(hot?" hot":""),"marker-end":`url(#${svg.id}${hot?"lh":"la"})`},lines);
+    el("text",{x:x-gap+4,y:yP,class:"nul","text-anchor":"end"},lines).textContent="NULL"}}
+  const cls=(o.cls&&o.cls(i))||"";
+  const g=el("g",{class:"lbox"+(o.click?" click":"")+(cls?" "+cls:"")+(cut?" cut":""),transform:`translate(${x},${yb})`},boxes);
+  if(o.click){g.setAttribute("tabindex","0");g.setAttribute("role","button");g.setAttribute("aria-label",arr[i]);
+   g.addEventListener("click",()=>o.click(i));g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();o.click(i)}})}
+  if(dbl){el("rect",{x:0,y:0,width:24,height:bh,rx:3},g);el("rect",{x:24,y:0,width:bw-48,height:bh,rx:3},g);el("rect",{x:bw-24,y:0,width:24,height:bh,rx:3},g);
+   el("text",{x:bw/2,y:bh/2},g).textContent=arr[i];el("text",{x:12,y:bh/2,class:"sub"},g).textContent="prev";el("text",{x:bw-12,y:bh/2,class:"sub"},g).textContent="next"}
+  else{el("rect",{x:0,y:0,width:bw-28,height:bh,rx:3},g);el("rect",{x:bw-28,y:0,width:28,height:bh,rx:3},g);
+   el("text",{x:(bw-28)/2,y:bh/2},g).textContent=arr[i];el("text",{x:bw-14,y:bh/2,class:"sub"},g).textContent="next"}
+ }
+ // bypass arcs for a removed node
+ if(o.cut!=null&&n){const c=o.cut;
+  if(c>0&&!o.cutBackOnly){const x1=X(c-1)+bw-12,x2=c<n-1?X(c+1)+16:X(c)+bw+gap+10;
+   el("path",{d:`M${x1},${yb} Q${(x1+x2)/2},${yb-58} ${x2},${yb-4}`,class:"ln hot",fill:"none","marker-end":`url(#${svg.id}lh)`},top);
+   if(c===n-1)el("text",{x:x2+6,y:yb-12,class:"nul"},top).textContent="NULL"}
+  if(dbl&&c<n-1&&c>0&&!o.cutFwdOnly){const x1=X(c+1)+12,x2=X(c-1)+bw-16;
+   el("path",{d:`M${x1},${yb+bh} Q${(x1+x2)/2},${yb+bh+52} ${x2},${yb+bh+4}`,class:"ln hot",fill:"none","marker-end":`url(#${svg.id}lh)`},top)}}
+ // pointers: one label per node, joined ("head · tail")
+ const groups=new Map();(o.ptrs||[]).forEach(p=>{if(p.i==null)return;if(!groups.has(p.i))groups.set(p.i,[]);groups.get(p.i).push(p)});
+ groups.forEach((ps,i)=>{const x=i<0?(n?X(n-1)+bw+gap+14:x0+40):X(i)+(dbl?bw/2:(bw-28)/2),col=ps[0].col||"var(--accent)";
+  const t=el("text",{x,y:22,class:"ptr","text-anchor":"middle"},top);
+  ps.forEach((p,j)=>{const ts=el("tspan",{fill:p.col||"var(--accent)"},t);ts.textContent=(j?" · ":"")+p.label});
+  el("line",{x1:x,y1:30,x2:x,y2:yb-4,stroke:col,"stroke-width":1.6,"stroke-dasharray":ps.every(p=>p.dashed)?"4 3":"none","marker-end":`url(#${svg.id}lc)`},top)});
+ if(o.float){const x=n?X(n-1)+bw/2:x0;
+  const g=el("g",{class:"lbox new",transform:`translate(${x},${yb+bh+60})`},boxes);
+  if(dbl){el("rect",{x:0,y:0,width:24,height:bh,rx:3},g);el("rect",{x:24,y:0,width:bw-48,height:bh,rx:3},g);el("rect",{x:bw-24,y:0,width:24,height:bh,rx:3},g);el("text",{x:bw/2,y:bh/2},g).textContent=o.float}
+  else{el("rect",{x:0,y:0,width:bw-28,height:bh,rx:3},g);el("rect",{x:bw-28,y:0,width:28,height:bh,rx:3},g);el("text",{x:(bw-28)/2,y:bh/2},g).textContent=o.float}
+  el("text",{x:x-10,y:yb+bh+77,class:"ptr",fill:"var(--warm)","text-anchor":"end"},top).textContent="node →";}
+}
+
+const M=i=>"Music "+String(i).padStart(2,"0");
+const EX=[1,2,3,4,5].map(M);
+let PL=EX.slice(),CVD=EX.slice();
+const eq=(a,b)=>String(a).trim().toLowerCase()===String(b).trim().toLowerCase();
+const $=id=>document.getElementById(id);
+function codeBox(id,lines,hl){$(id).innerHTML=lines.map((l,i)=>`<div class="cl${hl.includes(i)?" now":""}"><span>${i+1}</span><code>${l.replace(/</g,"&lt;")}</code></div>`).join("")}
+
+const KIT={
+ init(){
+  const s1=i=>{drawList($("dl1"),EX,{dbl:1,click:s1,cls:j=>j===i?"sel":"",ptrs:[{label:"head",i:0},{label:"tail",i:4,col:"var(--warm)"}]});
+   $("dl1sel").textContent=EX[i];$("dl1pv").textContent=i?EX[i-1]:"NULL";$("dl1nx").textContent=i<4?EX[i+1]:"NULL";
+   $("dl1role").textContent=i===0?"first node (head): prev is NULL":i===4?"last node (tail): next is NULL":"middle node"};
+  s1(2);
+  const s2=()=>{const N=+$("dl2n").value,ks=$("dl2k");ks.max=N;const k=Math.min(+ks.value,N);ks.value=k;$("dl2nv").textContent=N;$("dl2kv").textContent=k;
+   const arr=[];for(let i=1;i<=k;i++)arr.push(M(i));
+   const L=[`node = NEW("${M(k)}"); node.prev = NULL; node.next = NULL`,"IF head == NULL THEN               // element 1 only","    head = node; tail = node","ELSE                                // elements 2 … N","    node.prev = tail                // link back","    tail.next = node                // link forward","    tail = node                     // move on"];
+   codeBox("dl2code",L,k===1?[0,1,2]:[0,3,4,5,6]);
+   drawList($("dl2"),arr,{dbl:1,cls:i=>i===k-1?"new":"",hotNext:k>1?[k-2]:[],hotPrev:k>1?[k-1]:[],
+    ptrs:k===1?[{label:"head",i:0},{label:"tail",i:0,col:"var(--warm)"}]:[{label:"head",i:0},{label:"tail (old)",i:k-2,col:"var(--muted)",dashed:true},{label:"tail (new)",i:k-1,col:"var(--warm)"}]});
+   $("dl2h").textContent=M(1);$("dl2t").textContent=M(k);
+   $("dl2l").textContent=k===1?"none: head = tail = node":`${M(k)}.prev = ${M(k-1)}; ${M(k-1)}.next = ${M(k)}`;
+   $("dl2note").textContent=k===N?`Element ${N} = N: the loop ends. ${M(1)}.prev and ${M(N)}.next are the two NULLs.`:k===1?"Element 1: no tail yet, so no links are made.":`Same three lines as element 2, with the name ${M(k)}.`};
+  ["dl2n","dl2k"].forEach(id=>$(id).oninput=s2);s2();
+  let dir="near";
+  const s3=()=>{const k=+$("dl3k").value;$("dl3kv").textContent=k;const f=k-1,b=5-k;
+   const d=dir==="near"?(f<=b?"f":"b"):dir;["dl3f","dl3b","dl3n"].forEach((id,j)=>$(id).classList.toggle("on",["f","b","near"][j]===dir));
+   const path=d==="f"?Array.from({length:k},(_,i)=>i):Array.from({length:6-k},(_,i)=>4-i);
+   drawList($("dl3"),EX,{dbl:1,cls:i=>i===k-1?"cur":path.includes(i)?"vis":"",hotNext:d==="f"?path.slice(0,-1):[],hotPrev:d==="b"?path.slice(0,-1):[],
+    ptrs:[{label:"head",i:0},{label:"tail",i:4,col:"var(--warm)"},{label:"temp",i:k-1,col:"var(--warm)"}]});
+   $("dl3mf").textContent=f;$("dl3mb").textContent=b;$("dl3m").textContent=`${d==="f"?f:b} (${d==="f"?"forward via next":"backward via prev"})`};
+  $("dl3k").oninput=s3;$("dl3f").onclick=()=>{dir="f";s3()};$("dl3b").onclick=()=>{dir="b";s3()};$("dl3n").onclick=()=>{dir="near";s3()};s3();
+  const s4=c=>{const ends=c===0||c===4;
+   drawList($("dl4"),EX,{dbl:1,click:s4,cut:c,hotNext:[],ptrs:c===0?[{label:"head → "+EX[1],i:1}]:c===4?[{label:"head",i:0},{label:"tail → "+EX[3],i:3,col:"var(--warm)"}]:[{label:"head",i:0},{label:"X",i:c,col:"var(--warm)"}]});
+   const after=EX.filter((_,i)=>i!==c);
+   drawList($("dl4c"),after,{dbl:1,hotNext:c>0&&c<4?[c-1]:[],hotPrev:c>0&&c<4?[c]:[],ptrs:[{label:"head",i:0},{label:"tail",i:3,col:"var(--warm)"}]});
+   $("dl4a").textContent=c===0?"none before X: head = "+EX[1]:`${EX[c-1]}.next: ${EX[c]} → ${c<4?EX[c+1]:"NULL"}`;
+   $("dl4b").textContent=c===4?"none after X: tail = "+EX[3]:`${EX[c+1]}.prev: ${EX[c]} → ${c>0?EX[c-1]:"NULL"}`};
+  s4(2);
+  const pmsg=t=>$("pmsg").textContent=t;
+  const pg=o=>{drawList($("pgl"),PL,Object.assign({dbl:1,minW:700,ptrs:PL.length?[{label:"head",i:0},{label:"tail",i:PL.length-1,col:"var(--warm)"}]:[]},o||{}));
+   $("ps1").textContent=PL.length;$("ps2").textContent=PL[0]||"NULL";$("ps3").textContent=PL[PL.length-1]||"NULL";
+   $("ptrav").textContent="Forward from head: "+(PL.length?PL.join(" → ")+" → NULL":"NULL");
+   $("ptravb").textContent="Backward from tail: "+(PL.length?PL.slice().reverse().join(" → ")+" → NULL":"NULL")};
+  const v=()=>$("pv").value.trim();
+  $("pap").onclick=()=>{if(!v())return;PL.push(v());const n=PL.length;pg({cls:i=>i===n-1?"new":"",hotNext:n>1?[n-2]:[],hotPrev:n>1?[n-1]:[]});
+   pmsg(n===1?`${v()} is the only node: head = tail = it.`:`${v()}.prev = ${PL[n-2]}; ${PL[n-2]}.next = ${v()}; tail = ${v()}.`)};
+  $("ppre").onclick=()=>{if(!v())return;PL.unshift(v());pg({cls:i=>i===0?"new":"",hotNext:PL.length>1?[0]:[],hotPrev:PL.length>1?[1]:[]});
+   pmsg(PL.length===1?`${v()} is the only node.`:`${v()}.next = ${PL[1]}; ${PL[1]}.prev = ${v()}; head = ${v()}.`)};
+  $("pdel").onclick=()=>{const i=PL.findIndex(x=>eq(x,v()));if(i<0){pmsg(`${v()} is not in the list.`);return}
+   const w=PL.slice();PL.splice(i,1);const n=PL.length;pg({hotNext:i>0&&i<n?[i-1]:[],hotPrev:i>0&&i<n?[i]:[]});
+   pmsg(i===0&&n?`Removed the head: head = ${PL[0]}; ${PL[0]}.prev = NULL.`:i===w.length-1&&n?`Removed the tail: tail = ${PL[n-1]}; ${PL[n-1]}.next = NULL.`:n?`${w[i-1]}.next = ${w[i+1]} and ${w[i+1]}.prev = ${w[i-1]}: two links fixed.`:"The list is empty again.")};
+  $("pfind").onclick=()=>{const i=PL.findIndex(x=>eq(x,v())),n=PL.length;if(i<0){pg();pmsg(`Not found: a full walk checks all ${n} nodes.`);return}
+   const f=i,b=n-1-i,fw=f<=b,path=fw?Array.from({length:i+1},(_,j)=>j):Array.from({length:n-i},(_,j)=>n-1-j);
+   pg({cls:j=>j===i?"cur":path.includes(j)?"vis":"",hotNext:fw?path.slice(0,-1):[],hotPrev:fw?[]:path.slice(0,-1)});
+   pmsg(`Found at position ${i+1}: ${fw?f+" move(s) forward from head":b+" move(s) backward from tail"} (the other way would take ${fw?b:f}).`)};
+  $("preset").onclick=()=>{PL=EX.slice();pg();pmsg("Back to Music 01 … Music 05.")};
+  $("pclr").onclick=()=>{PL=[];pg();pmsg("Empty list: head = tail = NULL.")};
+  pg();pmsg("Delete a middle song and watch two links change.");
+ },
+ cv:{
+  sources:[{id:"ex",label:"Example: Music 01–05",get:()=>CVD},{id:"pg",label:"My playground list",get:()=>PL}],
+  keep(st,src){if(src==="pg")PL=st.final.slice();else CVD=st.final.slice()},
+  draw(svg,st,op){const p=[];const n=st.arr.length;
+   if(n)p.push({label:"head",i:st.head==null?0:st.head});
+   if(n)p.push({label:st.tailOld!=null?"tail (new)":"tail",i:st.tail==null?n-1:st.tail,col:"var(--warm)"});
+   if(st.tailOld!=null)p.push({label:"tail (old)",i:st.tailOld,col:"var(--muted)",dashed:true});
+   if(st.temp!==undefined)p.push({label:"temp",i:st.temp,col:"var(--warm)"});
+   if(st.cur!==undefined)p.push({label:"cur",i:st.cur,col:"var(--warm)"});
+   drawList(svg,st.arr,{dbl:1,minW:720,ptrs:p,hotNext:st.hotN||[],hotPrev:st.hotP||[],hideNext:st.hideN||[],cut:st.cut,cutFwdOnly:st.fwdOnly,cutBackOnly:st.backOnly,float:st.float,
+    cls:i=>i===st.newIdx?"new":(i===st.temp||i===st.cur)?"cur":(st.seen||[]).includes(i)?"vis":""})},
+  vars(st,op,inp){const nm=i=>i==null||i<0?"NULL":st.arr[i];const n=st.arr.length;
+   const V=[["head",n?st.arr[st.head==null?0:st.head]:"NULL"],["tail",n?st.arr[st.tail==null?n-1:st.tail]:"NULL"]];
+   if(op==="append")V.push(["node",inp]);
+   if(op==="back"){V.push(["target",inp],["temp",st.temp===undefined?"—":nm(st.temp)],["pos",st.pos||"—"])}
+   if(op==="delete"){V.push(["target",inp],["cur",st.cur===undefined?"—":nm(st.cur)],["cur.prev",st.cur>=0?nm(st.cur-1):"—"],["cur.next",st.cur>=0?nm(st.cur+1<n?st.cur+1:-1):"—"])}
+   return V}
+ },
+ ops:{
+  append:{label:"Append",input:{label:"Song",def:"Music 06"},keeps:1,W:600,H:430,
+   code:["node = NEW(x); node.prev = NULL; node.next = NULL","IF head == NULL THEN head = node; tail = node; STOP","node.prev = tail","tail.next = node","tail = node","STOP"],
+   nodes:{S:{t:"term",x:260,y:28,text:"Start: node = NEW(x)",line:0},D:{t:"dec",x:260,y:105,text:"head == NULL ?",line:1},
+    E1:{t:"term",x:500,y:105,w:210,text:"head = tail = node · stop",line:1},P1:{t:"proc",x:260,y:190,text:"node.prev = tail",line:2},
+    P2:{t:"proc",x:260,y:260,text:"tail.next = node",line:3},P3:{t:"proc",x:260,y:330,text:"tail = node",line:4},E2:{t:"term",x:260,y:400,text:"stop",line:5}},
+   edges:{"S-D":{pts:[[260,45],[260,75]]},"D-E1":{pts:[[355,105],[395,105]],yes:1},"D-P1":{pts:[[260,135],[260,173]],no:1},
+    "P1-P2":{pts:[[260,207],[260,243]]},"P2-P3":{pts:[[260,277],[260,313]]},"P3-E2":{pts:[[260,347],[260,383]]}},
+   run(arr,x){const S=[],n=arr.length;
+    S.push({n:"S",via:null,lab:null,it:1,note:`Make a node holding ${x}; prev and next are NULL.`,arr,float:x});
+    S.push({n:"D",via:"S-D",lab:null,it:1,note:n?`Is the list empty? No, head is ${arr[0]}.`:"Is the list empty? Yes.",arr,float:x});
+    if(!n){const a=[x];S.push({n:"E1",via:"D-E1",lab:"head = NULL → yes",it:1,note:`${x} becomes the only node: head and tail point to it. Stop.`,arr:a,newIdx:0,done:1,final:a});return S}
+    const a=arr.concat([x]);
+    S.push({n:"P1",via:"D-P1",lab:`head = ${arr[0]} → no`,it:1,note:`Link back: ${x}.prev = ${arr[n-1]} (the current tail). The forward link isn't set yet.`,arr:a,tail:n-1,newIdx:n,hotP:[n],hideN:[n-1]});
+    S.push({n:"P2",via:"P1-P2",lab:null,it:1,note:`Link forward: ${arr[n-1]}.next = ${x}.`,arr:a,tail:n-1,newIdx:n,hotN:[n-1],hotP:[n]});
+    S.push({n:"P3",via:"P2-P3",lab:null,it:1,note:`Move tail to ${x}.`,arr:a,tail:n,tailOld:n-1,newIdx:n,hotN:[n-1],hotP:[n]});
+    S.push({n:"E2",via:"P3-E2",lab:null,it:1,note:`Appended with 3 pointer changes. ${a.length} nodes. Stop.`,arr:a,tail:n,newIdx:n,done:1,final:a});return S}},
+  back:{label:"Search backward",input:{label:"Song",def:"Music 02"},W:620,H:420,
+   code:["temp = tail; pos = n","WHILE temp != NULL","    IF temp.data == target THEN RETURN pos","    temp = temp.prev; pos = pos - 1","RETURN not found"],
+   nodes:{S:{t:"term",x:260,y:30,text:"Start: target",line:-1},A:{t:"proc",x:260,y:95,w:200,text:"temp = tail; pos = n",line:0},
+    D1:{t:"dec",x:260,y:170,text:"temp == NULL ?",line:1},E1:{t:"term",x:500,y:170,text:"not found · stop",line:4},
+    D2:{t:"dec",x:260,y:265,w:220,text:"temp.data == target ?",line:2},E2:{t:"term",x:520,y:265,text:"found at pos · stop",line:2},
+    P:{t:"proc",x:260,y:355,w:250,text:"temp = temp.prev; pos--",line:3}},
+   edges:{"S-A":{pts:[[260,47],[260,78]]},"A-D1":{pts:[[260,112],[260,140]]},"D1-E1":{pts:[[355,170],[405,170]],yes:1},"D1-D2":{pts:[[260,200],[260,235]],no:1},
+    "D2-E2":{pts:[[370,265],[425,265]],yes:1},"D2-P":{pts:[[260,295],[260,338]],no:1},
+    "P-D1":{pts:[[260,372],[260,400],[30,400],[30,170],[165,170]],loop:1,lp:[30,290],la:1}},
+   run(arr,t){const S=[],n=arr.length;let it=1,i=n-1,pos=n;const seen=[];
+    const add=(nd,via,lab,note,f)=>S.push(Object.assign({n:nd,via,lab,it,note,arr,temp:i,pos,seen:seen.slice(),hotP:seen.filter(j=>j>i&&j>0)},f||{}));
+    add("S",null,null,`Search for ${t}, starting from the tail.`,{temp:undefined});
+    add("A","S-A",null,n?`temp starts at tail: ${arr[n-1]}, pos = ${n}.`:"tail is NULL, so temp is NULL.");
+    let via="A-D1",vl=null;
+    for(;;){add("D1",via,vl,i<0?"Is temp NULL? Yes: we walked past the head.":`Is temp NULL? No, temp is ${arr[i]}.`);
+     if(i<0){add("E1","D1-E1","temp = NULL → yes",`${t} is not in the list: all ${n} nodes compared. Stop.`);return S}
+     add("D2","D1-D2",`temp = ${arr[i]} → no`,`Compare ${arr[i]} with ${t}.`);
+     if(eq(arr[i],t)){add("E2","D2-E2",`${arr[i]} = ${t} → yes`,`Found ${t} at position ${pos} after ${n-pos} backward move${n-pos===1?"":"s"}. Stop.`);return S}
+     seen.push(i);const nx=i-1;
+     add("P","D2-P",`${arr[i]} ≠ ${t} → no`,`Step back: temp = ${nx<0?"NULL":arr[nx]}, pos = ${pos-1}.`,{temp:nx,pos:pos-1,hotP:seen.filter(j=>j>0)});
+     i=nx;pos--;it++;via="P-D1";vl=`temp = ${i<0?"NULL":arr[i]} · loop ${it}`}}},
+  delete:{label:"Delete",input:{label:"Song",def:"Music 03"},keeps:1,W:700,H:690,
+   code:["cur = head","WHILE cur != NULL AND cur.data != target: cur = cur.next","IF cur == NULL THEN STOP                        // not found","IF cur.prev != NULL THEN cur.prev.next = cur.next","ELSE head = cur.next","IF cur.next != NULL THEN cur.next.prev = cur.prev","ELSE tail = cur.prev","STOP: removed"],
+   nodes:{S:{t:"term",x:300,y:28,text:"Start: target",line:-1},A:{t:"proc",x:300,y:90,text:"cur = head",line:0},
+    D1:{t:"dec",x:300,y:165,text:"cur == NULL ?",line:2},E1:{t:"term",x:540,y:165,text:"not found · stop",line:2},
+    D2:{t:"dec",x:300,y:255,w:210,text:"cur.data == target ?",line:1},P:{t:"proc",x:530,y:255,text:"cur = cur.next",line:1},
+    D3:{t:"dec",x:300,y:345,text:"cur.prev ≠ NULL ?",line:3},P3:{t:"proc",x:130,y:425,w:230,text:"cur.prev.next = cur.next",line:3},P4:{t:"proc",x:470,y:425,w:180,text:"head = cur.next",line:4},
+    D4:{t:"dec",x:300,y:510,text:"cur.next ≠ NULL ?",line:5},P5:{t:"proc",x:130,y:590,w:230,text:"cur.next.prev = cur.prev",line:5},P6:{t:"proc",x:470,y:590,w:180,text:"tail = cur.prev",line:6},
+    E:{t:"term",x:300,y:665,text:"removed · stop",line:7}},
+   edges:{"S-A":{pts:[[300,45],[300,73]]},"A-D1":{pts:[[300,107],[300,135]]},"D1-E1":{pts:[[395,165],[445,165]],yes:1},"D1-D2":{pts:[[300,195],[300,225]],no:1},
+    "D2-P":{pts:[[405,255],[445,255]],no:1},"P-D1":{pts:[[615,255],[660,255],[660,122],[300,122],[300,135]],loop:1,lp:[500,122]},
+    "D2-D3":{pts:[[300,285],[300,315]],yes:1},"D3-P3":{pts:[[205,345],[130,345],[130,408]],yes:1},"D3-P4":{pts:[[395,345],[470,345],[470,408]],no:1},
+    "P3-D4":{pts:[[130,442],[130,470],[300,470],[300,480]]},"P4-D4":{pts:[[470,442],[470,470],[300,470],[300,480]]},
+    "D4-P5":{pts:[[205,510],[130,510],[130,573]],yes:1},"D4-P6":{pts:[[395,510],[470,510],[470,573]],no:1},
+    "P5-E":{pts:[[130,607],[130,640],[300,640],[300,648]]},"P6-E":{pts:[[470,607],[470,640],[300,640],[300,648]]}},
+   run(arr,t){const S=[],n=arr.length;let it=1,c=n?0:-1;const seen=[];
+    const add=(nd,via,lab,note,f)=>S.push(Object.assign({n:nd,via,lab,it,note,arr,cur:c,seen:seen.slice()},f||{}));
+    add("S",null,null,`Delete ${t}.`,{cur:undefined});add("A","S-A",null,n?`cur starts at head: ${arr[0]}.`:"head is NULL, so cur is NULL.");
+    let via="A-D1",vl=null;
+    for(;;){add("D1",via,vl,c<0?"Is cur NULL? Yes.":`Is cur NULL? No, cur is ${arr[c]}.`);
+     if(c<0){add("E1","D1-E1","cur = NULL → yes",`${t} is not in the list. Nothing changes. Stop.`);return S}
+     if(eq(arr[c],t))break;
+     add("D2","D1-D2",`cur = ${arr[c]} → no`,`Is ${arr[c]} the one to delete?`);
+     seen.push(c);const nx=c+1<n?c+1:-1;
+     add("P","D2-P",`${arr[c]} ≠ ${t} → no`,`Move on: cur = ${nx<0?"NULL":arr[nx]}.`,{cur:nx,hotN:seen.slice()});
+     c=nx;it++;via="P-D1";vl=`cur = ${c<0?"NULL":arr[c]} · loop ${it}`}
+    add("D2","D1-D2",`cur = ${arr[c]} → no`,`Is ${arr[c]} the one to delete? Yes.`);
+    const hasP=c>0,hasN=c<n-1,f=arr.filter((_,j)=>j!==c);let head=0,tail=n-1;
+    add("D3","D2-D3",`${arr[c]} = ${t} → yes`,`Found it. Does ${arr[c]} have a node before it?`);
+    if(hasP)add("P3","D3-P3",`cur.prev = ${arr[c-1]} → yes`,`Forward link: ${arr[c-1]}.next = ${hasN?arr[c+1]:"NULL"}.`,{cut:c,backOnly:false,fwdOnly:true});
+    else{head=n>1?1:0;add("P4","D3-P4","cur.prev = NULL → no",`${arr[c]} is the head, so head moves to ${hasN?arr[c+1]:"NULL"}.`,{cut:c,head,fwdOnly:true})}
+    const fw=hasP?"P3-D4":"P4-D4";
+    add("D4",fw,null,`Does ${arr[c]} have a node after it?`,{cut:c,head,fwdOnly:true});
+    if(hasN)add("P5","D4-P5",`cur.next = ${arr[c+1]} → yes`,`Backward link: ${arr[c+1]}.prev = ${hasP?arr[c-1]:"NULL"}.`,{cut:c,head,hotP:hasP?[]:[]});
+    else{tail=n>1?n-2:0;add("P6","D4-P6","cur.next = NULL → no",`${arr[c]} is the tail, so tail moves back to ${hasP?arr[c-1]:"NULL"}.`,{cut:c,head,tail})}
+    add("E",hasN?"P5-E":"P6-E",null,`Removed ${arr[c]}: ${(hasP?1:0)+(hasN?1:0)} link${(hasP?1:0)+(hasN?1:0)===1?"":"s"} fixed${!hasP?", head moved":""}${!hasN?", tail moved":""}. Stop.`,{cut:c,head,tail,done:1,final:f});
+    return S}}
+ }
+};
+
+KIT.init();
+cvInit();
+const VIEWS=["start","kernel","step-1","step-2","step-3","step-4","code","playground"];
+function route(){let v=location.hash.slice(1);if(!VIEWS.includes(v))v="start";
+ document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+ document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===v));window.scrollTo(0,0)}
+window.addEventListener("hashchange",route);
+renderQs();refresh();route();
+})();
+</script>
+</body>
+</html>

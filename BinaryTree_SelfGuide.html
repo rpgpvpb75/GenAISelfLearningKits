@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binary Tree Self-Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: fixed step rail on the left, one step view at a time on the right; trees drawn live in SVG (x = sorted rank, y = level). */
+:root{
+  --bg:#F4F6F8; --panel:#FFFFFF; --ink:#16212E; --muted:#5B6878; --line:#D7DEE6;
+  --accent:#0B7A83; --accent-soft:#DDF0F1; --warm:#C26A12; --warm-soft:#FBEBD8;
+  --ok:#1E7B45; --ok-soft:#DCF1E3; --bad:#B3362B; --bad-soft:#F8DEDB;
+  --edge:#8796A8;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F151C; --panel:#17202A; --ink:#E6ECF2; --muted:#9AA8B8; --line:#2A3644;
+  --accent:#3FB8C1; --accent-soft:#16363A; --warm:#F0A04B; --warm-soft:#3A2A17;
+  --ok:#5CCB86; --ok-soft:#173526; --bad:#F07F73; --bad-soft:#3D1F1C; --edge:#6E7E91; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F151C; --panel:#17202A; --ink:#E6ECF2; --muted:#9AA8B8; --line:#2A3644;
+  --accent:#3FB8C1; --accent-soft:#16363A; --warm:#F0A04B; --warm-soft:#3A2A17;
+  --ok:#5CCB86; --ok-soft:#173526; --bad:#F07F73; --bad-soft:#3D1F1C; --edge:#6E7E91; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:30px} h2{font-size:24px} h3{font-size:16px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100%}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
+nav .brand{font-family:var(--display);font-size:17px;font-weight:700;padding:0 8px 14px}
+nav .brand small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14px}
+nav a:hover{background:var(--bg)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:11px;font-family:var(--mono);flex:none}
+nav .dot.done{background:var(--ok);border-color:var(--ok);color:#fff}
+nav .dot.part{border-color:var(--warm);color:var(--warm)}
+nav .meter{margin:16px 8px 0;font-size:12px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+main{padding:28px clamp(16px,4vw,44px) 60px;max-width:1120px;min-width:0}
+section.view{display:none;flex-direction:column;gap:18px}
+section.view.on{display:flex}
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.kq{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;padding:12px 16px;font-style:italic}
+.kq b{font-style:normal;display:block;font-size:12px;font-family:var(--mono);color:var(--accent);margin-bottom:2px;text-transform:uppercase}
+.kcheck{border-left:4px solid var(--bad);background:var(--bad-soft);border-radius:0 10px 10px 0;padding:12px 16px}
+.kcheck b{color:var(--bad)}
+.kcheck.good{border-color:var(--ok);background:var(--ok-soft)} .kcheck.good b{color:var(--ok)}
+.terms{display:grid;gap:8px;margin:0;padding:0;list-style:none;max-width:74ch}
+.terms li{padding-left:16px;position:relative}
+.terms li::before{content:"";position:absolute;left:0;top:.65em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.term{font-weight:600}
+.lab{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(220px,1fr);gap:18px;align-items:start}
+.lab.wide{grid-template-columns:1fr}
+.treebox{background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+.treebox svg{display:block;width:100%;height:auto;min-width:520px}
+.treebox.big svg{min-width:900px}
+.readout{display:flex;flex-direction:column;gap:9px}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-radius:8px;background:var(--bg);font-size:14px}
+.stat b{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.stat.hl{background:var(--accent-soft)} .stat.hl b{color:var(--accent)}
+.stat.yes b{color:var(--ok)} .stat.no b{color:var(--bad)}
+.hint-line{font-size:13px;color:var(--muted);margin:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:var(--panel);padding:7px 12px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=number],input[type=text],select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px}
+input[type=range]{accent-color:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.chips{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:12.5px}
+.chips span{padding:2px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+.chips span.cur{background:var(--accent);border-color:var(--accent);color:#fff}
+.chips span.vis{background:var(--accent-soft);border-color:var(--accent)}
+.qs{display:flex;flex-direction:column;gap:12px}
+.q{border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:10px;background:var(--panel)}
+.q.ok{border-color:var(--ok);background:var(--ok-soft)}
+.q.bad{border-color:var(--bad);background:var(--bad-soft)}
+.q.part{border-color:var(--warm);background:var(--warm-soft)}
+.q .p{font-weight:500}
+.q .p span{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.q .ans{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.q .ans input{width:130px}
+.choice{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer}
+.choice.sel{border-color:var(--ink);font-weight:600}
+.fb{font-size:14px;display:grid;gap:4px}
+.fb b{margin-right:6px} .fb b.g{color:var(--ok)} .fb b.r{color:var(--bad)} .fb b.a{color:var(--warm)}
+.why{font-size:13px;font-weight:600;color:var(--muted)}
+.q textarea{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;width:100%;resize:vertical;font:inherit;color:inherit}
+.next{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.pill.done{background:var(--ok-soft);color:var(--ok)} .pill.part{background:var(--warm-soft);color:var(--warm)} .pill.none{background:var(--bg);color:var(--muted)}
+.callout{font-family:var(--display);font-size:19px;color:var(--accent);margin:0}
+/* svg tree */
+.e{stroke:var(--edge);stroke-width:1.6;fill:none}
+.e.hot{stroke:var(--warm);stroke-width:3}
+.n rect{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+.n text{fill:var(--ink);font-family:var(--mono);font-size:12px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.n.click{cursor:pointer}
+.n.sel rect,.n.cur rect{fill:var(--accent);stroke:var(--accent)} .n.sel text,.n.cur text{fill:#fff}
+.n.vis rect{fill:var(--accent-soft);stroke:var(--accent)}
+.n.bad rect{fill:var(--bad-soft);stroke:var(--bad);stroke-width:2.2}
+.n.new rect{fill:var(--warm-soft);stroke:var(--warm)}
+.n.leaf rect{stroke-dasharray:3 2}
+.n.dim{opacity:.4}
+.bdg circle{fill:var(--warm)} .bdg text{fill:#fff;font-family:var(--body);font-size:9.5px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.lvl{font-family:var(--body);font-size:10.5px;fill:var(--muted)}
+.cvgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+.fcbox{display:flex;justify-content:center}
+.codebox{font-family:var(--mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 0;overflow-x:auto}
+.cl{display:grid;grid-template-columns:26px 1fr;gap:6px;padding:2px 10px;border-left:3px solid transparent;white-space:pre}
+.cl span{color:var(--muted);text-align:right}
+.cl code{font-family:inherit}
+.cl.ran{background:var(--accent-soft)}
+.cl.now{background:var(--warm-soft);border-left-color:var(--warm);font-weight:600}
+#cvfc{width:auto;max-width:none}
+.fe{fill:none;stroke:var(--edge);stroke-width:1.5}
+.fe.hot{stroke:var(--warm);stroke-width:3}
+.fe.past{stroke:var(--warm);stroke-opacity:.35;stroke-dasharray:5 4;stroke-width:2}
+.fyn{font-family:var(--body);font-size:10.5px;fill:var(--muted);font-weight:600}
+.flab{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1}
+.flabt{font-family:var(--mono);font-size:11px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.fn rect,.fn polygon{fill:var(--panel);stroke:var(--ink);stroke-width:1.4}
+.fn.term rect{fill:var(--bg)}
+.fn.vis rect,.fn.vis polygon{fill:var(--accent-soft);stroke:var(--accent)}
+.fn.cur rect,.fn.cur polygon{fill:var(--accent);stroke:var(--accent)}
+.fn text{font-family:var(--mono);font-size:11.5px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.fn.cur text{fill:#fff;font-weight:600}
+td.mono{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+tr.now td{background:var(--warm-soft)}
+code{font-family:var(--mono);font-size:.92em}
+@media (max-width:1000px){.cvgrid{grid-template-columns:1fr}}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}
+  nav .brand,nav .meter{width:100%}
+  .lab{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<nav id="nav">
+  <div class="brand">Binary Tree<small>Self-guide built from your learning kernel</small></div>
+  <a href="#start" data-v="start"><span class="dot">⌂</span>Start here</a>
+  <a href="#kernel" data-v="kernel"><span class="dot">K</span>Kernel &amp; checks</a>
+  <a href="#step-1" data-v="step-1"><span class="dot" id="d1">1</span><span class="sn" data-i="0"></span></a>
+  <a href="#step-2" data-v="step-2"><span class="dot" id="d2">2</span><span class="sn" data-i="1"></span></a>
+  <a href="#step-3" data-v="step-3"><span class="dot" id="d3">3</span><span class="sn" data-i="2"></span></a>
+  <a href="#step-4" data-v="step-4"><span class="dot" id="d4">4</span><span class="sn" data-i="3"></span></a>
+  <a href="#step-5" data-v="step-5"><span class="dot" id="d5">5</span><span class="sn" data-i="4"></span></a>
+  <a href="#code" data-v="code"><span class="dot">{ }</span>Code &amp; flowchart</a>
+  <a href="#playground" data-v="playground"><span class="dot">✎</span>Playground</a>
+  <div class="meter"><span id="navmeter">0 complete</span><div class="bar"><i id="navbar" style="width:0%"></i></div></div>
+</nav>
+<main>
+
+<section class="view" id="v-start">
+  <div class="eyebrow">Self-guided tool</div>
+  <h1>Learn binary trees in five steps</h1>
+  <p style="max-width:70ch;margin:0">Built from your own example: the tree 1.0 → 0.9, 1.1 → 0.89, 0.91 … that you drew, checked, made full and grew a level. Each step takes one kernel statement, explains it, gives you a live tree to explore, then asks questions. Every answer needs a short reason, graded ★ Perfect (every key idea), ✓ Right but not perfect (some of them) or ✗ Wrong. A question is complete with a correct answer and reasoning that is at least right.</p>
+  <div class="card">
+    <h3>Your progress</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Step</th><th class="num">Questions</th><th class="num">Complete</th><th class="num">★ Perfect</th><th>Status</th></tr></thead>
+      <tbody id="ptable"></tbody>
+      <tfoot><tr><th>Overall</th><th class="num" id="ptot"></th><th class="num" id="pcor">0</th><th class="num" id="pperf">0</th><th id="ppct">0%</th></tr></tfoot>
+    </table></div>
+    <p class="callout" id="nextcall"></p>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--accent)"></i>Selected / current node</span>
+    <span><i style="background:var(--accent-soft);border:1px solid var(--accent)"></i>Visited / on the path</span>
+    <span><i style="background:var(--bad-soft);border:1px solid var(--bad)"></i>Breaks the search-tree rule</span>
+    <span><i style="background:var(--warm)"></i>Path walked · visit-order badge</span>
+    <span><i style="background:var(--ok)"></i>Answer correct, reasoning ★ perfect</span><span><i style="background:var(--warm)"></i>One of them still needs work</span>
+  </div>
+  <div class="row"><a class="btn primary" href="#step-1" style="text-decoration:none">Begin with step 1</a><button class="btn" id="reset">Clear my answers</button></div>
+</section>
+
+<section class="view" id="v-kernel">
+  <div class="eyebrow">Source</div>
+  <h2>The learning kernel and its checks</h2>
+  <p style="margin:0;max-width:70ch">These are the statements in BinaryTreeLearningKernel.xlsx, in order. Each becomes a step. Where a statement needs a qualifier, the check says so and the step teaches the qualified version.</p>
+  <div class="card scroll"><table><thead><tr><th>#</th><th>Kernel statement</th><th>Check</th></tr></thead><tbody id="ktable"></tbody></table></div>
+</section>
+
+<!-- STEP 1 -->
+<section class="view" id="v-step-1">
+  <div class="eyebrow">Step 1 of 5</div>
+  <h2>Binary tree basics</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="0"></span></div>
+  <div class="kcheck good"><b>Kernel check.</b> <span class="kc" data-k="0"></span></div>
+  <ul class="terms">
+    <li>The <span class="term">root</span> is the top node (your 1.0). Every other node has exactly one <span class="term">parent</span>.</li>
+    <li>Each node has at most a <span class="term">left child</span> and a <span class="term">right child</span>. A node with no children is a <span class="term">leaf</span> (dashed outline).</li>
+    <li>The <span class="term">level</span> of a node is its distance from the root. The <span class="term">height</span> is the longest root-to-leaf path, counted in edges.</li>
+  </ul>
+  <div class="card lab">
+    <div class="treebox"><svg id="t1" role="img" aria-label="Your drawn tree"></svg></div>
+    <div class="readout">
+      <h3>Your drawing · click a node</h3>
+      <div class="stat hl"><span>Selected</span><b id="t1sel">1.0</b></div>
+      <div class="stat"><span>Level</span><b id="t1lvl">0</b></div>
+      <div class="stat"><span>Parent</span><b id="t1par">—</b></div>
+      <div class="stat"><span>Children</span><b id="t1ch">0.9, 1.1</b></div>
+      <div class="stat"><span>Kind</span><b id="t1kind">root</b></div>
+      <p class="hint-line" id="t1sum"></p>
+    </div>
+  </div>
+  <div class="qs" data-step="1"></div>
+  <div class="next"><a class="btn" href="#kernel">Back</a><a class="btn primary" href="#step-2">Next: the search-tree rule</a></div>
+</section>
+
+<!-- STEP 2 -->
+<section class="view" id="v-step-2">
+  <div class="eyebrow">Step 2 of 5</div>
+  <h2>The search-tree rule: check against every ancestor</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="1"></span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="1"></span></div>
+  <ul class="terms">
+    <li>A <span class="term">subtree</span> is a node plus everything below it. The rule applies to whole subtrees, not just to a node's two children.</li>
+    <li>Each node gets an <span class="term">allowed range</span>: going left sets a new upper limit, going right sets a new lower limit, and the limits from higher up still apply.</li>
+    <li>Every parent–child pair can look fine while a node still breaks a limit set further up. That is the trap in your first drawing.</li>
+  </ul>
+  <div class="card lab">
+    <div class="treebox"><svg id="t2" role="img" aria-label="Tree with allowed ranges"></svg></div>
+    <div class="readout">
+      <div class="seg" role="group" aria-label="Which tree"><button id="t2a" class="on">Your drawing</button><button id="t2b">Fixed (± step)</button></div>
+      <div class="stat hl"><span>Selected</span><b id="t2sel">0.99</b></div>
+      <div class="stat"><span>Allowed range</span><b id="t2rng"></b></div>
+      <div class="stat" id="t2okrow"><span>Inside the range?</span><b id="t2ok"></b></div>
+      <div class="stat"><span>Rule broken at</span><b id="t2bad"></b></div>
+      <p class="hint-line" id="t2why"></p>
+    </div>
+  </div>
+  <div class="qs" data-step="2"></div>
+  <div class="next"><a class="btn" href="#step-1">Back</a><a class="btn primary" href="#step-3">Next: full and perfect</a></div>
+</section>
+
+<!-- STEP 3 -->
+<section class="view" id="v-step-3">
+  <div class="eyebrow">Step 3 of 5</div>
+  <h2>Full, complete and perfect</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="2"></span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="2"></span></div>
+  <ul class="terms">
+    <li><span class="term">Full</span>: every node has 0 or 2 children, never exactly 1.</li>
+    <li><span class="term">Complete</span>: every level is filled except possibly the last, which fills from the left.</li>
+    <li><span class="term">Perfect</span>: full and every leaf on the same level. Level k holds 2^k nodes, so the tree holds 2^(h+1) − 1.</li>
+  </ul>
+  <div class="card lab">
+    <div class="treebox"><svg id="t3" role="img" aria-label="Tree shape"></svg></div>
+    <div class="readout">
+      <div class="seg" role="group" aria-label="Which tree"><button id="t3a">Your drawing</button><button id="t3b">Fixed, 4 levels</button><button id="t3c" class="on">Perfect</button></div>
+      <div class="row" id="t3hrow"><label for="t3h">Height h = <b id="t3hv">3</b></label><input type="range" id="t3h" min="0" max="4" value="3" style="flex:1"></div>
+      <div class="stat"><span>Nodes</span><b id="t3n"></b></div>
+      <div class="stat"><span>Leaves</span><b id="t3l"></b></div>
+      <div class="stat"><span>Height</span><b id="t3ht"></b></div>
+      <div class="stat" id="t3fr"><span>Full?</span><b id="t3f"></b></div>
+      <div class="stat" id="t3cr"><span>Complete?</span><b id="t3c2"></b></div>
+      <div class="stat" id="t3pr"><span>Perfect?</span><b id="t3p"></b></div>
+      <div class="stat hl"><span>2^(h+1) − 1</span><b id="t3form"></b></div>
+    </div>
+  </div>
+  <div class="qs" data-step="3"></div>
+  <div class="next"><a class="btn" href="#step-2">Back</a><a class="btn primary" href="#step-4">Next: adding a level</a></div>
+</section>
+
+<!-- STEP 4 -->
+<section class="view" id="v-step-4">
+  <div class="eyebrow">Step 4 of 5</div>
+  <h2>Adding a level: ± step, and what a search costs</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="3"></span></div>
+  <div class="kcheck"><b>Kernel check.</b> <span class="kc" data-k="3"></span></div>
+  <ul class="terms">
+    <li>A node on level d has children at value ± <span class="term">step</span>, where step = 10^−(d+1): 0.1, 0.01, 0.001, 0.0001.</li>
+    <li>Everything below a node stays within ± 0.0111… of it, which is less than the step that put it there. So no value crosses to the wrong side.</li>
+    <li><span class="term">Search</span> starts at the root and makes one comparison per level, going left if smaller and right if larger.</li>
+  </ul>
+  <div class="card lab wide">
+    <div class="row">
+      <div class="seg" role="group" aria-label="Number of levels"><button data-h="2">3 levels</button><button data-h="3">4 levels</button><button data-h="4" class="on">5 levels</button></div>
+      <label for="t4q">Search for</label><input type="number" id="t4q" step="0.0001" value="1.0909" style="width:120px">
+      <button class="btn primary" id="t4go">Search</button>
+    </div>
+    <div class="treebox big"><svg id="t4" role="img" aria-label="Perfect tree with a search path"></svg></div>
+    <div class="row" style="align-items:stretch">
+      <div class="stat hl" style="flex:1"><span>Comparisons</span><b id="t4c"></b></div>
+      <div class="stat" style="flex:1"><span>Nodes / levels</span><b id="t4n"></b></div>
+      <div class="stat" style="flex:2"><span>Path</span><b id="t4p"></b></div>
+    </div>
+    <div class="scroll"><table><thead><tr><th>Level</th><th>Step that formed it</th><th class="num">Nodes on level</th><th class="num">Total so far</th><th class="num">Max comparisons</th></tr></thead><tbody id="t4tab"></tbody></table></div>
+  </div>
+  <div class="qs" data-step="4"></div>
+  <div class="next"><a class="btn" href="#step-3">Back</a><a class="btn primary" href="#step-5">Next: navigation orders</a></div>
+</section>
+
+<!-- STEP 5 -->
+<section class="view" id="v-step-5">
+  <div class="eyebrow">Step 5 of 5</div>
+  <h2>Navigation orders</h2>
+  <div class="kq"><b>The kernel says</b><span class="kt" data-k="4"></span></div>
+  <div class="kcheck good"><b>Kernel check.</b> <span class="kc" data-k="4"></span></div>
+  <ul class="terms">
+    <li><span class="term">Level-order</span>: top to bottom, left to right, using a queue.</li>
+    <li><span class="term">Pre-order</span>: node, then left subtree, then right. <span class="term">In-order</span>: left, node, right. <span class="term">Post-order</span>: left, right, node.</li>
+    <li>All four visit every node exactly once and stop after the last one; only the order differs.</li>
+  </ul>
+  <div class="card lab wide">
+    <div class="row">
+      <div class="seg" role="group" aria-label="Order"><button data-o="level" class="on">Level-order</button><button data-o="pre">Pre-order</button><button data-o="in">In-order</button><button data-o="post">Post-order</button></div>
+      <button class="btn" id="t5prev" aria-label="Previous step">◀</button>
+      <label for="t5s">Step <b id="t5sv">1</b> of 31</label><input type="range" id="t5s" min="1" max="31" value="1" style="width:220px">
+      <button class="btn" id="t5next" aria-label="Next step">▶</button>
+      <button class="btn" id="t5all">Show all</button>
+    </div>
+    <div class="treebox big"><svg id="t5" role="img" aria-label="Navigation through the 31-node tree"></svg></div>
+    <p class="hint-line" id="t5msg"></p>
+    <div class="chips" id="t5chips"></div>
+  </div>
+  <div class="qs" data-step="5"></div>
+  <div class="next"><a class="btn" href="#step-4">Back</a><a class="btn primary" href="#playground">Next: playground</a></div>
+</section>
+
+<!-- CODE & FLOWCHART -->
+<section class="view" id="v-code">
+  <div class="eyebrow">Code &amp; flowchart</div>
+  <h2>Watch the code run: flowchart, values and conditions</h2>
+  <p style="margin:0;max-width:74ch">Pick an operation and step through it. The highlighted line is the code being run. In the flowchart, orange arrows are the path taken in the current loop, each labelled with the condition checked and the actual values. Faded arrows were taken in earlier loops. The tree shows where <code>cur</code> is now.</p>
+  <div class="card">
+    <div class="row">
+      <div class="seg" role="group" aria-label="Operation"><button data-op="insert" class="on">Insert</button><button data-op="search">Search</button><button data-op="level">Level-order</button></div>
+      <span class="row" id="cvkrow"><label for="cvk">Value</label><input type="number" id="cvk" step="any" value="0.95" style="width:110px"></span>
+      <label for="cvsrc">Tree</label><select id="cvsrc"><option value="ex">15-node example</option><option value="pg">My playground tree</option></select>
+      <button class="btn primary" id="cvgo">Run</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="cvprev" aria-label="Previous step">◀ Back</button>
+      <button class="btn" id="cvnext" aria-label="Next step">Step ▶</button>
+      <button class="btn" id="cvplay">▶▶ Play</button>
+      <input type="range" id="cvs" min="1" max="1" value="1" style="flex:1;min-width:140px" aria-label="Step">
+      <b id="cvsv" style="font-family:var(--mono)"></b>
+      <button class="btn primary" id="cvkeep" style="display:none">Keep this insert</button>
+    </div>
+    <p class="callout" id="cvnote" style="font-size:16px"></p>
+    <h3>Flowchart</h3>
+    <div class="treebox fcbox"><svg id="cvfc" role="img" aria-label="Flowchart with the path taken highlighted"></svg></div>
+    <div class="cvgrid">
+      <div class="readout"><h3>Pseudocode</h3><div class="codebox" id="cvcode"></div></div>
+      <div class="readout"><h3>Variables</h3><div class="readout" id="cvvars"></div></div>
+    </div>
+    <h3>Tree</h3>
+    <div class="treebox big"><svg id="cvtree" role="img" aria-label="Tree with the current node"></svg></div>
+    <h3>Trace, newest first</h3>
+    <div class="scroll" style="max-height:300px;overflow-y:auto"><table><thead><tr><th class="num">#</th><th>Loop</th><th>Box reached</th><th>Arrow taken: condition → result</th><th>What happens</th></tr></thead><tbody id="cvtrace"></tbody></table></div>
+  </div>
+</section>
+
+<!-- PLAYGROUND -->
+<section class="view" id="v-playground">
+  <div class="eyebrow">Free play</div>
+  <h2>Build your own binary search tree</h2>
+  <p style="margin:0;max-width:72ch">Type a number and insert it. It walks down from the root (orange path) and attaches at the first empty spot. Watch the shape checks and the four navigation orders update.</p>
+  <div class="card lab wide">
+    <div class="row">
+      <label for="pv">Value</label><input type="number" id="pv" step="any" value="0.95" style="width:120px">
+      <button class="btn primary" id="pins">Insert</button><button class="btn" id="pundo">Undo</button><button class="btn" id="pclear">Clear</button>
+      <button class="btn" id="pex">Load the 15-node example</button><button class="btn" id="psorted">Insert 1, 2, 3, 4, 5 (sorted)</button>
+    </div>
+    <p class="hint-line" id="pmsg"></p>
+    <div class="treebox big"><svg id="t6" role="img" aria-label="Your tree"></svg></div>
+    <div class="row" style="align-items:stretch">
+      <div class="stat" style="flex:1"><span>Nodes</span><b id="s1"></b></div>
+      <div class="stat" style="flex:1"><span>Height</span><b id="s2"></b></div>
+      <div class="stat" style="flex:1"><span>Leaves</span><b id="s3"></b></div>
+      <div class="stat" style="flex:1" id="s4r"><span>Full</span><b id="s4"></b></div>
+      <div class="stat" style="flex:1" id="s5r"><span>Complete</span><b id="s5"></b></div>
+      <div class="stat" style="flex:1" id="s6r"><span>Perfect</span><b id="s6"></b></div>
+    </div>
+    <div class="scroll"><table><tbody id="porders"></tbody></table></div>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+const BANK=/*QBANK*/{"topic": "Binary Tree", "min_words": 4, "stepnames": ["Binary tree basics", "The search-tree rule", "Full and perfect", "Adding a level", "Navigation orders"], "checks": ["Accurate. Height is counted in edges, so the root alone has height 0.", "Accurate, with two qualifiers. The rule covers the whole subtree, not just the direct children, so check each node against limits from all its ancestors. It also needs a rule for equal values; this kit treats duplicates as not allowed. Your first drawing broke the rule at 1.0 (a duplicate) and 0.99.", "Accurate, with h = height (root at level 0). Full does not imply perfect: full only needs 0 or 2 children per node, while perfect also needs every leaf on the same level.", "Needs two qualifiers. The ± step pattern stays a valid search tree only because each step is larger than all later steps added together (0.0111… < 0.1). And 'one more comparison per level' holds for a balanced tree like this one; in general a search takes at most height + 1 comparisons.", "Accurate."], "steps": {"1": [{"p": "What is the most children any node in a binary tree may have?", "a": 2, "h": "'Binary' means two choices at each node.", "w": "At most two: a left child and a right child.", "need": 2, "ideas": [{"label": "binary means a left and a right child", "terms": ["binary", "left", "right"]}, {"label": "the limit is two", "terms": ["at most", "max", "no more than", "up to", "only", "2", "two"]}]}, {"p": "How many leaves does your drawing have?", "a": 6, "h": "A leaf has no children. Click the nodes at the bottom of each branch.", "w": "0.91, 1.2, 0.889, 0.891, 0.99 and 1.01: six leaves.", "need": 2, "ideas": [{"label": "a leaf is a node with no children", "terms": ["no child", "no children", "without child", "zero child", "0 child", "nothing below", "end", "nothing under", "nothing beneath", "none below", "bottom", "no node below"]}, {"label": "there are six of them", "terms": ["6", "six"]}]}, {"p": "What is the height of your drawing (edges on the longest path from the root down)?", "a": 3, "h": "Count the edges from 1.0 down to 0.889.", "w": "1.0 → 0.9 → 0.89 → 0.889 is 3 edges.", "need": 2, "ideas": [{"label": "the longest root-to-leaf path", "terms": ["longest", "deepest", "path", "edges", "down to", "0.889", "0.891", "0.99", "1.01", "bottom"]}, {"label": "it has three edges", "terms": ["3", "three"]}]}, {"p": "Is your drawing a binary tree?", "a": "Yes", "o": ["Yes", "No"], "h": "Check the most children any node has.", "w": "Yes. No node has more than two children.", "need": 1, "ideas": [{"label": "no node has more than two children", "terms": ["at most", "no more than", "two", "2 child", "every node", "each node", "no node", "max"]}]}], "2": [{"p": "Which node breaks the rule by being smaller than the root while sitting in its right subtree?", "a": "0.99", "o": ["0.89", "0.99", "1.01", "1.2"], "h": "Every value on the root's right side must be bigger than 1.0.", "w": "0.99 is below 1.0 but sits in the root's right subtree.", "need": 2, "ideas": [{"label": "everything on the right must be larger than the root", "terms": ["right", "larger", "bigger", "greater", "more than"]}, {"label": "0.99 is below the root 1.0", "terms": ["1.0", "root", "less", "smaller", "below", "under"]}]}, {"p": "The node under 1.1 on the left (1.0 in your drawing): what value must it be strictly greater than?", "a": 1.0, "h": "Look past its parent. Which ancestor sends it to the right?", "w": "1.0. It is in the root's right subtree, so it must be greater than the root 1.0.", "need": 2, "ideas": [{"label": "the limit comes from an ancestor (the root), not the parent", "terms": ["root", "ancestor", "grandparent", "above", "all the way", "whole path", "path"]}, {"label": "the limit is 1.0", "terms": ["1.0", "1"]}], "wrong": [{"label": "the limit isn't only the parent 1.1; the root's limit 1.0 still applies", "terms": ["only the parent", "just the parent", "only its parent", "just its parent"]}]}, {"p": "Is your drawing a binary search tree?", "a": "No", "o": ["Yes", "No"], "h": "Click 0.99 and the lower 1.0 to see their allowed ranges.", "w": "No: 1.0 repeats the root and 0.99 is on the wrong side of it.", "need": 2, "ideas": [{"label": "which node breaks it (0.99 or the repeated 1.0)", "terms": ["0.99", "duplicate", "equal", "same value", "repeat"]}, {"label": "the rule applies to the whole subtree, against all ancestors", "terms": ["ancestor", "root", "whole", "subtree", "every", "all", "right side"]}]}, {"p": "In the fixed tree, what is 1.1's left child?", "a": 1.09, "h": "Same pattern as 0.9 → 0.89: subtract 0.01.", "w": "1.1 − 0.01 = 1.09, which stays between 1.0 and 1.1.", "need": 2, "ideas": [{"label": "the step at this level is 0.01", "terms": ["0.01", "minus", "subtract", "step", "less"]}, {"label": "it stays between 1.0 and 1.1", "terms": ["between", "above 1", "greater than 1", "range", "1.0 and 1.1", "bigger than 1", "more than 1", "1.0"]}]}], "3": [{"p": "How many nodes does a perfect binary tree with levels 0 to 3 have?", "a": 15, "h": "1 + 2 + 4 + 8, or 2^(h+1) − 1 with h = 3.", "w": "1 + 2 + 4 + 8 = 15 = 2^4 − 1.", "need": 2, "ideas": [{"label": "the formula 2^(h+1) − 1, or doubling per level", "terms": ["2^4", "2^(h+1)", "16", "1+2+4+8", "1 + 2 + 4 + 8", "double", "power"]}, {"label": "the total, 15", "terms": ["15", "fifteen"]}]}, {"p": "How many leaves does a perfect binary tree with levels 0 to 4 have?", "a": 16, "h": "The bottom level holds 2^h nodes.", "w": "The bottom level is level 4: 2^4 = 16 leaves.", "need": 2, "ideas": [{"label": "the bottom level doubles each time (2^h)", "terms": ["2^4", "2^h", "double", "power", "x2", "bottom level", "last level"]}, {"label": "the count, 16", "terms": ["16", "sixteen"]}]}, {"p": "Is your drawing a full binary tree?", "a": "Yes", "o": ["Yes", "No"], "h": "Full means every node has 0 or 2 children.", "w": "Yes. Every node in it has either 0 or 2 children.", "need": 1, "ideas": [{"label": "every node has 0 or 2 children", "terms": ["0 or 2", "zero or two", "two child", "2 child", "no child", "every node", "each node", "either"]}]}, {"p": "Is your drawing a perfect binary tree?", "a": "No", "o": ["Yes", "No"], "h": "Are all the leaves on the same level?", "w": "No. 0.91 and 1.2 are leaves on level 2; the others are on level 3.", "need": 1, "ideas": [{"label": "its leaves are on different levels", "terms": ["different level", "same level", "not all", "level 2", "level 3", "0.91", "1.2", "depth"]}]}], "4": [{"p": "What step forms level 4 (the children of level-3 nodes)?", "a": 0.0001, "h": "The steps go 0.1, 0.01, 0.001, …", "w": "Each level divides the step by 10: 0.001 → 0.0001.", "need": 2, "ideas": [{"label": "the step shrinks ten times per level", "terms": ["ten", "10", "shrink", "divide", "decimal", "smaller"]}, {"label": "the step is 0.0001", "terms": ["0.0001", "1/10000", "10^-4"]}]}, {"p": "What is the left child of 0.911?", "a": 0.9109, "h": "Left child = parent − step. The step at this level is 0.0001.", "w": "0.911 − 0.0001 = 0.9109.", "need": 2, "ideas": [{"label": "left means subtract the step", "terms": ["minus", "subtract", "less", "smaller", "left", "take away"]}, {"label": "the step is 0.0001", "terms": ["0.0001", "0.9109"]}], "wrong": [{"label": "a left child subtracts the step; adding it gives the right child", "terms": ["add the step", "adding the step", "plus 0.0001", "+ 0.0001", "+0.0001"]}]}, {"p": "How many comparisons does it take to find 1.0909?", "a": 5, "h": "Run the search and count the nodes on the path.", "w": "1.0 → 1.1 → 1.09 → 1.091 → 1.0909: five comparisons.", "need": 2, "ideas": [{"label": "the path walked from the root", "terms": ["1.1", "1.09", "1.091", "path", "root", "right", "left"]}, {"label": "five comparisons", "terms": ["5", "five"]}]}, {"p": "At most, how many comparisons find any value in the 31-node tree?", "a": 5, "h": "One comparison per level.", "w": "The tree has 5 levels (0–4), so at most 5 comparisons.", "need": 2, "ideas": [{"label": "one comparison per level (height + 1)", "terms": ["level", "height", "depth", "per level", "each level"]}, {"label": "five", "terms": ["5", "five"]}]}], "5": [{"p": "In in-order navigation of the 31-node tree, which node is visited at step 16?", "a": 1.0, "h": "In-order is sorted. What sits in the middle?", "w": "1.0. Its 15 smaller values come first, so it is 16th.", "need": 2, "ideas": [{"label": "in-order is sorted, so the root is in the middle", "terms": ["middle", "half", "sorted", "15", "left subtree", "smaller"]}, {"label": "it is the root 1.0", "terms": ["1.0", "root"]}]}, {"p": "In pre-order navigation, which node is visited 3rd?", "a": 0.89, "h": "Pre-order: node first, then go left.", "w": "1.0, then left to 0.9, then left again to 0.89.", "need": 2, "ideas": [{"label": "pre-order visits the node first, then goes left", "terms": ["first", "before", "then left", "left", "node then"]}, {"label": "the path 1.0 → 0.9 → 0.89", "terms": ["0.9", "0.89", "1.0"]}]}, {"p": "In post-order navigation, which node is visited last?", "a": 1.0, "h": "Post-order visits children before their parent.", "w": "The root 1.0, because it waits for both subtrees.", "need": 2, "ideas": [{"label": "children are visited before their parent", "terms": ["after", "children first", "children before", "both subtrees", "subtrees first", "wait"]}, {"label": "so the root comes last", "terms": ["root", "1.0", "last"]}], "wrong": [{"label": "post-order visits the root last, not first", "terms": ["root first", "root is visited first", "starts at the root"]}]}, {"p": "Which navigation order lists a binary search tree's values in sorted order?", "a": "In-order", "o": ["Level-order", "Pre-order", "In-order", "Post-order"], "h": "Which order visits everything smaller before a node, and everything larger after it?", "w": "In-order: left (smaller), node, right (larger).", "need": 2, "ideas": [{"label": "left subtree (smaller) first, then the node, then the right", "terms": ["left", "smaller first", "node in the middle", "between"]}, {"label": "this gives sorted order", "terms": ["sorted", "ascending", "increasing", "smallest to largest", "low to high"]}]}]}}/*END*/;
+const Q=BANK.steps, MINW=BANK.min_words||4, STEPNAMES=BANK.stepnames, CHECKS=BANK.checks;
+const KERNEL=/*KERNEL*/["A binary tree is made of nodes where each node has at most two children, a left child and a right child; the top node is the root and nodes with no children are leaves", "In a binary search tree every value in a node's left subtree is smaller than the node and every value in its right subtree is larger", "A full binary tree has every node with 0 or 2 children; if all leaves are also on the same level it is a perfect binary tree with 2^(h+1) - 1 nodes", "Children can be formed as parent plus or minus a step that shrinks ten times at each level; adding a level doubles the leaves but adds only one comparison to a search", "The same tree can be navigated level by level, pre-order, in-order or post-order; in-order navigation of a binary search tree gives the values in sorted order"]/*ENDK*/;
+const STEPS=Object.keys(Q);
+const TOTAL=STEPS.reduce((s,k)=>s+Q[k].length,0);
+const SVGNS="http://www.w3.org/2000/svg";
+let state={};
+try{state=JSON.parse(localStorage.getItem("binarytree-selfguide-v2")||"{}")||{}}catch(e){state={}}
+function save(){try{localStorage.setItem("binarytree-selfguide-v2",JSON.stringify(state))}catch(e){}}
+
+document.querySelectorAll(".sn").forEach(el=>el.textContent=STEPNAMES[+el.dataset.i]);
+document.querySelectorAll(".kt").forEach(el=>el.textContent="“"+KERNEL[+el.dataset.k]+"”");
+document.querySelectorAll(".kc").forEach(el=>el.textContent=CHECKS[+el.dataset.k]);
+const kt=document.getElementById("ktable");
+KERNEL.forEach((s,i)=>{const tr=document.createElement("tr");
+ tr.innerHTML=`<td>${i+1}</td><td>${s}</td><td>${CHECKS[i]} <a href="#step-${i+1}">Step ${i+1}</a></td>`;kt.appendChild(tr)});
+
+/* ---------- questions: answer + reasoning ---------- */
+function norm(v){return String(v).trim().toLowerCase()}
+function same(v,a){if(norm(v)===norm(a))return true;const x=parseFloat(v),y=parseFloat(a);
+ return typeof a==="number"&&!isNaN(x)&&/^\s*-?[\d.]+\s*$/.test(String(v))&&Math.abs(x-y)<1e-9}
+function nz(s){return String(s).toLowerCase().replace(/[×*]/g,"x").replace(/[−–—]/g,"-").replace(/→/g,"->").replace(/\b(times|multiplied by)\b/g," x ").replace(/\s+/g," ").trim()}
+function hasTerm(text,t){const T=nz(t);
+ if(/^[a-z0-9]{1,3}$/.test(T))return new RegExp("(^|[^a-z0-9])"+T+"($|[^a-z0-9])").test(text);
+ if(/^[0-9.]+$/.test(T))return new RegExp("(^|[^0-9.])"+T.replace(/\./g,"\\.")+"($|[^0-9])").test(text);
+ return text.includes(T)||text.replace(/ /g,"").includes(T.replace(/ /g,""))}
+/* three-level reasoning grade: perfect = every key idea; partial = at least one; wrong = none, too short, or a known misconception */
+const LEV={perfect:["★ Perfect","g"],partial:["✓ Right, but not perfect","a"],wrong:["✗ Wrong","r"]};
+function judge(q,raw){const text=nz(raw||""),words=text.split(" ").filter(Boolean).length;
+ if(!text)return{lev:"wrong",msg:"Add a sentence explaining why."};
+ if(words<MINW)return{lev:"wrong",msg:`Too short: explain in at least ${MINW} words.`};
+ const mis=(q.wrong||[]).filter(w=>w.terms.some(t=>hasTerm(text,t)));
+ if(mis.length)return{lev:"wrong",msg:"This reasoning contains a mistake: "+mis.map(w=>w.label).join("; ")+"."};
+ const hit=q.ideas.filter(i=>i.terms.some(t=>hasTerm(text,t))),miss=q.ideas.filter(i=>!hit.includes(i));
+ if(!miss.length)return{lev:"perfect",msg:"You covered "+hit.map(i=>i.label).join(" and ")+"."};
+ if(hit.length)return{lev:"partial",msg:"You covered "+hit.map(i=>i.label).join(" and ")+". For a perfect answer, also explain "+miss.map(i=>i.label).join(", and ")+"."};
+ return{lev:"wrong",msg:"Your reasoning doesn't show the key idea yet. Explain "+miss.map(i=>i.label).join(", and ")+"."}}
+function renderQs(){
+ document.querySelectorAll(".qs").forEach(box=>{
+  const s=box.dataset.step; box.innerHTML="<h3>Check yourself</h3><p class='hint-line'>Answer, then say why in your own words. Reasoning is graded ★ Perfect, ✓ Right but not perfect, or ✗ Wrong. A question is complete with a correct answer and reasoning that is at least right.</p>";
+  Q[s].forEach((q,i)=>{
+   const id=s+"."+(i+1), st=state[id]||{}, k=id.replace(".","_"), checked=st.checked;
+   const cls=!checked?"":(st.ok&&st.lev==="perfect")?" ok":(st.ok||st.lev!=="wrong")?" part":" bad";
+   const d=document.createElement("div"); d.className="q"+cls;
+   const ans=q.o?q.o.map(o=>`<button class="choice${st.v===o?" sel":""}" data-v="${o}" aria-pressed="${st.v===o}">${o}</button>`).join("")
+     :`<input type="text" inputmode="decimal" id="in${k}" aria-label="Your answer to Q${i+1}" value="${st.v!=null?String(st.v).replace(/"/g,"&quot;"):""}">`;
+   d.innerHTML=`<div class="p"><span>Q${i+1}</span>${q.p}</div><div class="ans">${ans}</div>
+    <label class="why" for="why${k}">Why? Justify your answer</label>
+    <textarea id="why${k}" rows="2" placeholder="Because …"></textarea>
+    <div class="row"><button class="btn primary chk">Check answer and reasoning</button></div><div class="fb"></div>`;
+   const ta=d.querySelector("textarea"); ta.value=st.r||"";
+   const fb=d.querySelector(".fb");
+   if(checked){const L=LEV[st.lev];
+    fb.innerHTML=`<div><b class="${st.ok?"g":"r"}">${st.ok?"✓ Answer correct.":"✗ Answer not yet."}</b>${st.ok?q.w:"Hint: "+q.h}</div>
+     <div><b class="${L[1]}">Reasoning: ${L[0]}.</b>${st.rmsg}</div>`}
+   if(q.o)d.querySelectorAll(".choice").forEach(b=>b.onclick=()=>{state[id]=Object.assign({},state[id],{v:b.dataset.v,r:ta.value,checked:false});save();renderQs();refresh();
+     const t=document.getElementById("why"+k);if(t)t.focus()});
+   d.querySelector(".chk").onclick=()=>{
+    const v=q.o?(state[id]||{}).v:d.querySelector("input").value;
+    if(v==null||String(v).trim()===""){fb.innerHTML='<div><b class="r">Pick or type an answer first.</b></div>';return}
+    const j=judge(q,ta.value);
+    state[id]={v,ok:same(v,q.a),r:ta.value,lev:j.lev,rmsg:j.msg,checked:true};save();renderQs();refresh()};
+   box.appendChild(d)});
+  const c=countStep(s),pf=countPerfect(s),p=document.createElement("p");p.className="hint-line";
+  p.textContent=`${c} of ${Q[s].length} complete, ${pf} perfect`+(c===Q[s].length?". Step complete.":"");box.appendChild(p)});
+}
+function qst(s,i){const t=state[s+"."+(i+1)];return t&&t.checked?t:null}
+function countStep(s){return Q[s].filter((q,i)=>{const t=qst(s,i);return t&&t.ok&&t.lev&&t.lev!=="wrong"}).length}
+function countPerfect(s){return Q[s].filter((q,i)=>{const t=qst(s,i);return t&&t.ok&&t.lev==="perfect"}).length}
+const STEPS_=Object.keys(Q);
+function refresh(){
+ let tot=0,perf=0,next=null;const tb=document.getElementById("ptable");tb.innerHTML="";
+ STEPS_.forEach((s,ix)=>{const c=countStep(s),pf=countPerfect(s),n=Q[s].length;tot+=c;perf+=pf;
+  const status=c===n?"done":c>0?"part":"none"; if(c<n&&!next)next=s;
+  const dot=document.getElementById("d"+s);if(dot){dot.className="dot"+(status==="done"?" done":status==="part"?" part":"");dot.textContent=status==="done"?"✓":s}
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td><a href="#step-${s}">${s}. ${STEPNAMES[ix]}</a></td><td class="num">${n}</td><td class="num">${c}</td><td class="num">${pf}</td><td><span class="pill ${status}">${status==="done"?"Done":status==="part"?"In progress":"Not started"}</span></td>`;
+  tb.appendChild(tr)});
+ const pct=Math.round(tot/TOTAL*100);
+ document.getElementById("pcor").textContent=tot;document.getElementById("ptot").textContent=TOTAL;document.getElementById("pperf").textContent=perf;
+ document.getElementById("ppct").textContent=pct+"%";
+ document.getElementById("navmeter").textContent=`${tot} of ${TOTAL} complete · ${perf} perfect`;
+ document.getElementById("navbar").style.width=pct+"%";
+ document.getElementById("nextcall").textContent=next?`Next: step ${next}, ${STEPNAMES[+next-1].toLowerCase()}`:(perf<TOTAL?`All steps complete. ${TOTAL-perf} answers can still be made perfect, or open the playground.`:"Everything complete and perfect. Open the playground.");
+}
+document.getElementById("reset").onclick=()=>{state={};save();renderQs();refresh()};
+
+/* ---------- tree model ---------- */
+// node: {v:number, l:node|null, r:node|null}
+const N=(v,l,r)=>({v,l:l||null,r:r||null});
+const fmt=v=>{let s=(+v.toFixed(6)).toString();return s.indexOf(".")<0?s+".0":s};
+function perfect(h){function mk(v,d){return d>h?null:N(+v.toFixed(6),mk(v-Math.pow(10,-(d+1)),d+1),mk(v+Math.pow(10,-(d+1)),d+1))}return mk(1.0,0)}
+function drawing(){return N(1.0,N(0.9,N(0.89,N(0.889),N(0.891)),N(0.91)),N(1.1,N(1.0,N(0.99),N(1.01)),N(1.2)))}
+function fixed4(){return N(1.0,N(0.9,N(0.89,N(0.889),N(0.891)),N(0.91)),N(1.1,N(1.09,N(1.089),N(1.091)),N(1.11)))}
+function all(t){const a=[];(function w(n,d,p){if(!n)return;a.push({n,d,p});w(n.l,d+1,n);w(n.r,d+1,n)})(t,0,null);return a}
+function height(t){return t?1+Math.max(height(t.l),height(t.r)):-1}
+function order(t,kind){const out=[];
+ if(kind==="level"){const q=t?[t]:[];while(q.length){const c=q.shift();out.push(c);if(c.l)q.push(c.l);if(c.r)q.push(c.r)}return out}
+ (function w(n){if(!n)return;if(kind==="pre")out.push(n);w(n.l);if(kind==="in")out.push(n);w(n.r);if(kind==="post")out.push(n)})(t);return out}
+function shape(t){const A=all(t),leaves=A.filter(x=>!x.n.l&&!x.n.r);
+ const full=A.every(x=>(!!x.n.l)===(!!x.n.r));
+ const perf=full&&leaves.every(x=>x.d===leaves[0].d);
+ let maxIdx=0;(function w(n,i){if(!n)return;maxIdx=Math.max(maxIdx,i);w(n.l,2*i);w(n.r,2*i+1)})(t,1);
+ return{n:A.length,leaves:leaves.length,h:height(t),full,complete:maxIdx===A.length,perfect:perf}}
+function ranges(t){const m=new Map();(function w(n,lo,hi,why){if(!n)return;m.set(n,{lo,hi,ok:(lo===null||n.v>lo.v)&&(hi===null||n.v<hi.v)});
+ w(n.l,lo,(hi===null||n.v<hi.v)?n:hi);w(n.r,(lo===null||n.v>lo.v)?n:lo,hi)})(t,null,null);return m}
+
+/* ---------- drawing ---------- */
+function el(t,a,p){const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+function draw(svg,t,o){
+ o=o||{};svg.innerHTML="";if(!t){svg.setAttribute("viewBox","0 0 600 80");el("text",{x:300,y:40,class:"lvl","text-anchor":"middle"},svg).textContent="Empty tree: insert a value to start.";return}
+ const ino=order(t,"in"),rank=new Map(ino.map((n,i)=>[n,i])),A=all(t),H=Math.max(0,...A.map(x=>x.d));
+ const dx=o.dx||52,LH=o.lh||62,pad=46,W=Math.max(pad*2+(ino.length-1)*dx,o.minW||520),off=(W-(pad*2+(ino.length-1)*dx))/2;
+ const X=n=>pad+off+rank.get(n)*dx, Y=d=>30+d*LH, Hh=Y(H)+34;
+ svg.setAttribute("viewBox",`0 0 ${W} ${Hh}`);
+ for(let d=0;d<=H;d++)el("text",{x:6,y:Y(d)+4,class:"lvl"},svg).textContent="L"+d;
+ const hot=o.hot||new Set();
+ A.forEach(x=>{if(x.p)el("line",{x1:X(x.p),y1:Y(x.d-1)+11,x2:X(x.n),y2:Y(x.d)-11,class:"e"+(hot.has(x.n)?" hot":"")},svg)});
+ A.forEach(x=>{const lab=fmt(x.n.v),w=Math.max(34,lab.length*7.6+12);
+  const cls=(o.cls&&o.cls(x.n))||"";const leaf=!x.n.l&&!x.n.r&&o.leaves?" leaf":"";
+  const g=el("g",{class:"n"+(o.click?" click":"")+(cls?" "+cls:"")+leaf,transform:`translate(${X(x.n)},${Y(x.d)})`},svg);
+  if(o.click){g.setAttribute("tabindex","0");g.setAttribute("role","button");g.setAttribute("aria-label","Node "+lab);
+   g.addEventListener("click",()=>o.click(x.n));g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();o.click(x.n)}})}
+  el("rect",{x:-w/2,y:-11,width:w,height:22,rx:11},g);el("text",{},g).textContent=lab;
+  const b=o.badge&&o.badge(x.n);if(b!=null){const bg=el("g",{class:"bdg",transform:`translate(${w/2-2},-12)`},g);el("circle",{r:8},bg);el("text",{},bg).textContent=b}});
+}
+
+/* step 1 */
+const T1=drawing(),A1=all(T1);
+function s1(sel){
+ draw(document.getElementById("t1"),T1,{click:s1,leaves:true,cls:n=>n===sel?"sel":"",dx:56});
+ const x=A1.find(a=>a.n===sel),ch=[sel.l,sel.r].filter(Boolean);
+ document.getElementById("t1sel").textContent=fmt(sel.v);
+ document.getElementById("t1lvl").textContent=x.d;
+ document.getElementById("t1par").textContent=x.p?fmt(x.p.v):"—";
+ document.getElementById("t1ch").textContent=ch.length?ch.map(c=>(c===sel.l?"L ":"R ")+fmt(c.v)).join(", "):"none";
+ document.getElementById("t1kind").textContent=!x.p?"root":ch.length?"internal":"leaf";
+ const sh=shape(T1);
+ document.getElementById("t1sum").textContent=`Whole drawing: ${sh.n} nodes, ${sh.leaves} leaves, height ${sh.h}. No node has more than 2 children.`;
+}
+s1(T1);
+
+/* step 2 */
+let t2tree=drawing(),t2sel=null;
+function s2(sel){
+ const R=ranges(t2tree),A=all(t2tree);if(!sel||!R.has(sel))sel=A.find(a=>!R.get(a.n).ok)?.n||t2tree;t2sel=sel;
+ const path=new Set();(function f(n,tgt){if(!n)return false;if(n===tgt||f(n.l,tgt)||f(n.r,tgt)){path.add(n);return true}return false})(t2tree,sel);
+ draw(document.getElementById("t2"),t2tree,{click:s2,dx:56,hot:path,cls:n=>n===sel?"sel":(!R.get(n).ok?"bad":"")});
+ const r=R.get(sel);
+ document.getElementById("t2sel").textContent=fmt(sel.v);
+ document.getElementById("t2rng").textContent=`${r.lo?fmt(r.lo.v):"−∞"} < x < ${r.hi?fmt(r.hi.v):"+∞"}`;
+ document.getElementById("t2ok").textContent=r.ok?"yes":"no";
+ document.getElementById("t2okrow").className="stat "+(r.ok?"yes":"no");
+ const bad=A.filter(a=>!R.get(a.n).ok).map(a=>fmt(a.n.v));
+ document.getElementById("t2bad").textContent=bad.length?bad.join(", "):"nowhere: valid BST";
+ document.getElementById("t2why").textContent=`Limits come from the orange path: ${r.lo?"the lower limit "+fmt(r.lo.v)+" (an ancestor it went right from)":"no lower limit"}, ${r.hi?"the upper limit "+fmt(r.hi.v)+" (an ancestor it went left from)":"no upper limit"}.`;
+}
+document.getElementById("t2a").onclick=()=>{t2tree=drawing();document.getElementById("t2a").classList.add("on");document.getElementById("t2b").classList.remove("on");s2(null)};
+document.getElementById("t2b").onclick=()=>{t2tree=fixed4();document.getElementById("t2b").classList.add("on");document.getElementById("t2a").classList.remove("on");s2(null)};
+s2(null);
+
+/* step 3 */
+let t3mode="perfect";
+function s3(){
+ const h=+document.getElementById("t3h").value;document.getElementById("t3hv").textContent=h;
+ document.getElementById("t3hrow").style.display=t3mode==="perfect"?"flex":"none";
+ const t=t3mode==="perfect"?perfect(h):t3mode==="draw"?drawing():fixed4();
+ ["a","b","c"].forEach((k,i)=>document.getElementById("t3"+k).classList.toggle("on",["draw","fixed","perfect"][i]===t3mode));
+ draw(document.getElementById("t3"),t,{leaves:true,dx:h>=4&&t3mode==="perfect"?32:50});
+ const s=shape(t);
+ document.getElementById("t3n").textContent=s.n;document.getElementById("t3l").textContent=s.leaves;document.getElementById("t3ht").textContent=s.h;
+ [["t3f","t3fr",s.full],["t3c2","t3cr",s.complete],["t3p","t3pr",s.perfect]].forEach(([b,r,v])=>{document.getElementById(b).textContent=v?"yes":"no";document.getElementById(r).className="stat "+(v?"yes":"no")});
+ document.getElementById("t3form").textContent=`2^${s.h+1} − 1 = ${Math.pow(2,s.h+1)-1}`+(s.perfect?" ✓ matches":" ≠ "+s.n+" (not perfect)");
+}
+document.getElementById("t3a").onclick=()=>{t3mode="draw";s3()};document.getElementById("t3b").onclick=()=>{t3mode="fixed";s3()};document.getElementById("t3c").onclick=()=>{t3mode="perfect";s3()};
+document.getElementById("t3h").oninput=s3;s3();
+
+/* step 4 */
+let t4h=4;
+function s4(){
+ const t=perfect(t4h),q=parseFloat(document.getElementById("t4q").value);
+ const path=[];let c=t,found=null;
+ while(c&&!isNaN(q)){path.push(c);if(Math.abs(q-c.v)<1e-9){found=c;break}c=q<c.v?c.l:c.r}
+ const ps=new Set(path);
+ draw(document.getElementById("t4"),t,{dx:t4h>=4?34:t4h===3?58:84,hot:ps,cls:n=>n===found?"cur":ps.has(n)?"vis":"",badge:n=>ps.has(n)?path.indexOf(n)+1:null});
+ document.getElementById("t4c").textContent=isNaN(q)?"—":path.length+(found?" (found)":" (not found)");
+ document.getElementById("t4n").textContent=`${Math.pow(2,t4h+1)-1} / ${t4h+1}`;
+ document.getElementById("t4p").textContent=path.map(n=>fmt(n.v)).join(" → ")+(found||isNaN(q)?"":" → NULL");
+ document.querySelectorAll("#v-step-4 [data-h]").forEach(b=>b.classList.toggle("on",+b.dataset.h===t4h));
+ const tb=document.getElementById("t4tab");tb.innerHTML="";
+ for(let d=0;d<=t4h;d++){const tr=document.createElement("tr");
+  tr.innerHTML=`<td>${d}</td><td>${d===0?"— (root)":"± "+fmt(Math.pow(10,-d))}</td><td class="num">${Math.pow(2,d)}</td><td class="num">${Math.pow(2,d+1)-1}</td><td class="num">${d+1}</td>`;tb.appendChild(tr)}
+}
+document.querySelectorAll("#v-step-4 [data-h]").forEach(b=>b.onclick=()=>{t4h=+b.dataset.h;s4()});
+document.getElementById("t4go").onclick=s4;document.getElementById("t4q").onkeydown=e=>{if(e.key==="Enter")s4()};
+s4();
+
+/* step 5 */
+const T5=perfect(4);let t5o="level",t5k=1;
+const HOW={level:"Queue: take the front node, visit it, add its children to the back.",pre:"Visit the node first, then everything on its left, then its right.",
+ in:"Go left as far as possible, visit, then do the right subtree. Values come out sorted.",post:"Visit both subtrees first; a node waits for its children."};
+function s5(){
+ const ord=order(T5,t5o),cur=ord[t5k-1],pos=new Map(ord.map((n,i)=>[n,i+1]));
+ document.getElementById("t5s").value=t5k;document.getElementById("t5sv").textContent=t5k;
+ draw(document.getElementById("t5"),T5,{dx:34,cls:n=>n===cur?"cur":pos.get(n)<t5k?"vis":"dim",badge:n=>pos.get(n)<=t5k?pos.get(n):null});
+ document.querySelectorAll("#v-step-5 [data-o]").forEach(b=>b.classList.toggle("on",b.dataset.o===t5o));
+ document.getElementById("t5msg").textContent=`Step ${t5k}: visit ${fmt(cur.v)}. ${HOW[t5o]}`+(t5k===31?" All 31 nodes visited, so navigation stops.":"");
+ const ch=document.getElementById("t5chips");ch.innerHTML="";
+ ord.forEach((n,i)=>{const s=document.createElement("span");s.textContent=(i+1)+". "+fmt(n.v);s.className=i+1===t5k?"cur":i+1<t5k?"vis":"";ch.appendChild(s)});
+}
+document.querySelectorAll("#v-step-5 [data-o]").forEach(b=>b.onclick=()=>{t5o=b.dataset.o;t5k=1;s5()});
+document.getElementById("t5s").oninput=e=>{t5k=+e.target.value;s5()};
+document.getElementById("t5prev").onclick=()=>{if(t5k>1){t5k--;s5()}};
+document.getElementById("t5next").onclick=()=>{if(t5k<31){t5k++;s5()}};
+document.getElementById("t5all").onclick=()=>{t5k=31;s5()};
+s5();
+
+/* playground */
+let P=null,hist=[],lastPath=new Set(),lastNew=null;
+function clone(n){return n?N(n.v,clone(n.l),clone(n.r)):null}
+function insert(v){
+ if(isNaN(v)){msg("Type a number first.");return}
+ hist.push(clone(P));const node=N(v);lastPath=new Set();lastNew=node;
+ if(!P){P=node;msg(`${fmt(v)} becomes the root.`);return pg()}
+ let c=P,steps=[];
+ for(;;){lastPath.add(c);steps.push(fmt(c.v));
+  if(Math.abs(v-c.v)<1e-12){hist.pop();lastNew=null;msg(`${fmt(v)} is already in the tree. Duplicates are not inserted.`);return pg()}
+  if(v<c.v){if(!c.l){c.l=node;break}c=c.l}else{if(!c.r){c.r=node;break}c=c.r}}
+ lastPath.add(node);msg(`${fmt(v)}: compared with ${steps.join(", ")}, attached as the ${v<c.v?"left":"right"} child of ${fmt(c.v)}.`);pg();
+}
+function msg(t){document.getElementById("pmsg").textContent=t}
+function pg(){
+ draw(document.getElementById("t6"),P,{dx:46,leaves:true,hot:lastPath,cls:n=>n===lastNew?"new":lastPath.has(n)?"vis":"",minW:600});
+ const s=P?shape(P):{n:0,h:-1,leaves:0,full:true,complete:true,perfect:true};
+ document.getElementById("s1").textContent=s.n;document.getElementById("s2").textContent=P?s.h:"—";document.getElementById("s3").textContent=s.leaves;
+ [["s4","s4r",s.full],["s5","s5r",s.complete],["s6","s6r",s.perfect]].forEach(([b,r,v])=>{document.getElementById(b).textContent=P?(v?"yes":"no"):"—";document.getElementById(r).className="stat "+(P?(v?"yes":"no"):"")});
+ const tb=document.getElementById("porders");tb.innerHTML="";
+ [["Level-order","level"],["Pre-order","pre"],["In-order (sorted)","in"],["Post-order","post"]].forEach(([n,k])=>{
+  const tr=document.createElement("tr");tr.innerHTML=`<th style="white-space:nowrap">${n}</th><td style="font-family:var(--mono);font-size:13px">${P?order(P,k).map(x=>fmt(x.v)).join(", "):"—"}</td>`;tb.appendChild(tr)});
+}
+document.getElementById("pins").onclick=()=>insert(parseFloat(document.getElementById("pv").value));
+document.getElementById("pv").onkeydown=e=>{if(e.key==="Enter")insert(parseFloat(document.getElementById("pv").value))};
+document.getElementById("pundo").onclick=()=>{if(hist.length){P=hist.pop();lastPath=new Set();lastNew=null;msg("Undone.");pg()}};
+document.getElementById("pclear").onclick=()=>{hist.push(clone(P));P=null;lastPath=new Set();lastNew=null;msg("Cleared.");pg()};
+document.getElementById("pex").onclick=()=>{hist.push(clone(P));P=perfect(3);lastPath=new Set();lastNew=null;msg("Loaded the 15-node tree from your example. Try inserting 0.95 or 1.05.");pg()};
+document.getElementById("psorted").onclick=()=>{hist.push(clone(P));P=null;[1,2,3,4,5].forEach(v=>{let n=N(v);if(!P)P=n;else{let c=P;while(c.r)c=c.r;c.r=n}});lastPath=new Set();lastNew=null;
+ msg("Sorted input makes every node go right: the tree becomes a linked list of height 4. A search now needs up to 5 comparisons for only 5 values.");pg()};
+P=perfect(3);msg("Loaded the 15-node tree from your example. Try inserting 0.95 or 1.05.");pg();
+
+
+/* ================= Code & flowchart playground =================
+   Each operation = {code:[lines], nodes:{id:{t:'term'|'proc'|'dec',x,y,w,text,line}}, edges:{id:{pts:[[x,y]...], yes?, no?, loop?, lp?}}, W, H, run(tree,key)->steps}
+   A step = {n:nodeId, via:edgeId|null, lab:"condition with values → result", it:iteration, cur, tree, path:[], visited:[], Q:[], newNode, note} */
+const FC={
+ search:{W:600,H:515,code:["cur = root","WHILE cur != NULL","    IF key == cur.v THEN RETURN found","    IF key < cur.v THEN cur = cur.left","    ELSE cur = cur.right","RETURN not found"],
+  nodes:{S:{t:"term",x:260,y:30,text:"Start: key = k",line:-1},A:{t:"proc",x:260,y:95,text:"cur = root",line:0},
+   D1:{t:"dec",x:260,y:170,text:"cur == NULL ?",line:1},E1:{t:"term",x:490,y:170,text:"not found · stop",line:5},
+   D2:{t:"dec",x:260,y:265,text:"key == cur.v ?",line:2},E2:{t:"term",x:490,y:265,text:"found · stop",line:2},
+   D3:{t:"dec",x:260,y:360,text:"key < cur.v ?",line:3},L:{t:"proc",x:130,y:450,w:150,text:"cur = cur.left",line:3},R:{t:"proc",x:390,y:450,w:150,text:"cur = cur.right",line:4}},
+  edges:{"S-A":{pts:[[260,47],[260,78]]},"A-D1":{pts:[[260,112],[260,140]]},
+   "D1-E1":{pts:[[355,170],[395,170]],yes:1},"D1-D2":{pts:[[260,200],[260,235]],no:1},
+   "D2-E2":{pts:[[355,265],[395,265]],yes:1},"D2-D3":{pts:[[260,295],[260,330]],no:1},
+   "D3-L":{pts:[[165,360],[130,360],[130,433]],yes:1},"D3-R":{pts:[[355,360],[390,360],[390,433]],no:1},
+   "L-D1":{pts:[[130,467],[130,495],[30,495],[30,170],[165,170]],loop:1,lp:[30,330],la:1},
+   "R-D1":{pts:[[390,467],[390,495],[30,495],[30,170],[165,170]],loop:1,lp:[230,495]}},
+  run(t,k){const S=[];let it=1,cur=t;const path=[];
+   const add=(n,via,lab,note,extra)=>S.push(Object.assign({n,via,lab,it,cur,tree:t,path:path.slice(),note},extra||{}));
+   add("S",null,null,`Search for ${fmt(k)}.`);add("A","S-A",null,`Start at the root${cur?" "+fmt(cur.v):" (empty tree)"}.`);
+   let via="A-D1",vl=null;
+   for(;;){
+    if(cur)path.push(cur);
+    add("D1",via,vl,cur?`Is cur NULL? No, cur is ${fmt(cur.v)}.`:"Is cur NULL? Yes: we fell off the tree.");
+    if(!cur){add("E1","D1-E1","cur is NULL → yes",`${fmt(k)} is not in the tree. Stop.`);return S}
+    add("D2","D1-D2",`cur = ${fmt(cur.v)} → no`,`Compare ${fmt(k)} with ${fmt(cur.v)}.`);
+    if(Math.abs(k-cur.v)<1e-12){add("E2","D2-E2",`${fmt(k)} = ${fmt(cur.v)} → yes`,`Found ${fmt(k)} after ${path.length} comparison${path.length>1?"s":""}. Stop.`,{found:cur});return S}
+    add("D3","D2-D3",`${fmt(k)} ≠ ${fmt(cur.v)} → no`,`Is ${fmt(k)} smaller than ${fmt(cur.v)}?`);
+    if(k<cur.v){const nx=cur.l;add("L","D3-L",`${fmt(k)} < ${fmt(cur.v)} → yes`,`Smaller, so go left to ${nx?fmt(nx.v):"NULL"}.`);cur=nx;via="L-D1"}
+    else{const nx=cur.r;add("R","D3-R",`${fmt(k)} > ${fmt(cur.v)} → no`,`Larger, so go right to ${nx?fmt(nx.v):"NULL"}.`);cur=nx;via="R-D1"}
+    it++;vl=`cur = ${cur?fmt(cur.v):"NULL"} · loop ${it}`;
+   }}},
+ insert:{W:860,H:585,code:["node = NEW(key)","IF root == NULL THEN root = node; STOP","cur = root","LOOP","    IF key == cur.v THEN STOP          // duplicate","    IF key < cur.v THEN","        IF cur.left == NULL THEN cur.left = node; STOP","        ELSE cur = cur.left","    ELSE","        IF cur.right == NULL THEN cur.right = node; STOP","        ELSE cur = cur.right"],
+  nodes:{S:{t:"term",x:430,y:28,text:"Start: node = NEW(key)",line:0},D0:{t:"dec",x:430,y:100,text:"root == NULL ?",line:1},E0:{t:"term",x:660,y:100,text:"root = node · stop",line:1},
+   A:{t:"proc",x:430,y:175,text:"cur = root",line:2},D2:{t:"dec",x:430,y:250,text:"key == cur.v ?",line:4},E2:{t:"term",x:660,y:250,text:"duplicate · stop",line:4},
+   D3:{t:"dec",x:430,y:330,text:"key < cur.v ?",line:5},DL:{t:"dec",x:250,y:415,text:"cur.left == NULL ?",line:6},DR:{t:"dec",x:610,y:415,text:"cur.right == NULL ?",line:9},
+   EL:{t:"term",x:250,y:505,text:"cur.left = node · stop",line:6},ML:{t:"proc",x:80,y:505,w:140,text:"cur = cur.left",line:7},
+   ER:{t:"term",x:610,y:505,text:"cur.right = node · stop",line:9},MR:{t:"proc",x:780,y:505,w:140,text:"cur = cur.right",line:10}},
+  edges:{"S-D0":{pts:[[430,45],[430,70]]},"D0-E0":{pts:[[525,100],[565,100]],yes:1},"D0-A":{pts:[[430,130],[430,158]],no:1},
+   "A-D2":{pts:[[430,192],[430,220]]},"D2-E2":{pts:[[525,250],[565,250]],yes:1},"D2-D3":{pts:[[430,280],[430,300]],no:1},
+   "D3-DL":{pts:[[335,330],[250,330],[250,385]],yes:1},"D3-DR":{pts:[[525,330],[610,330],[610,385]],no:1},
+   "DL-EL":{pts:[[250,445],[250,488]],yes:1},"DL-ML":{pts:[[155,415],[80,415],[80,488]],no:1},
+   "DR-ER":{pts:[[610,445],[610,488]],yes:1},"DR-MR":{pts:[[705,415],[780,415],[780,488]],no:1},
+   "ML-D2":{pts:[[80,522],[80,560],[20,560],[20,250],[335,250]],loop:1,lp:[20,400],la:1},
+   "MR-D2":{pts:[[780,522],[780,560],[20,560],[20,250],[335,250]],loop:1,lp:[560,560]}},
+  run(t0,k){const t=clone(t0),S=[];let it=1;const node=N(k),path=[];let cur=null,root=t;
+   const add=(n,via,lab,note,extra)=>S.push(Object.assign({n,via,lab,it,cur,tree:root,path:path.slice(),note},extra||{}));
+   add("S",null,null,`Make a new node holding ${fmt(k)}.`);
+   if(!root){add("D0","S-D0",null,"Is the tree empty? Yes.");root=node;add("E0","D0-E0","root is NULL → yes",`${fmt(k)} becomes the root. Stop.`,{tree:root,newNode:node,done:1});return S}
+   add("D0","S-D0",null,`Is the tree empty? No, the root is ${fmt(root.v)}.`);
+   cur=root;add("A","D0-A",`root = ${fmt(root.v)} → no`,`Start at the root ${fmt(root.v)}.`);
+   let via="A-D2",vl=null;
+   for(;;){path.push(cur);
+    add("D2",via,vl,`Compare ${fmt(k)} with ${fmt(cur.v)}.`);
+    if(Math.abs(k-cur.v)<1e-12){add("E2","D2-E2",`${fmt(k)} = ${fmt(cur.v)} → yes`,`${fmt(k)} is already in the tree, so it is not inserted. Stop.`);return S}
+    add("D3","D2-D3",`${fmt(k)} ≠ ${fmt(cur.v)} → no`,`Is ${fmt(k)} smaller than ${fmt(cur.v)}?`);
+    if(k<cur.v){add("DL","D3-DL",`${fmt(k)} < ${fmt(cur.v)} → yes`,`Smaller: look at ${fmt(cur.v)}'s left child.`);
+     if(!cur.l){cur.l=node;add("EL","DL-EL",`left of ${fmt(cur.v)} is NULL → yes`,`Attach ${fmt(k)} as the left child of ${fmt(cur.v)}. Stop.`,{newNode:node,done:1});return S}
+     add("ML","DL-ML",`left = ${fmt(cur.l.v)} → no`,`It is taken (${fmt(cur.l.v)}), so move down to it.`);cur=cur.l;via="ML-D2"}
+    else{add("DR","D3-DR",`${fmt(k)} > ${fmt(cur.v)} → no`,`Larger: look at ${fmt(cur.v)}'s right child.`);
+     if(!cur.r){cur.r=node;add("ER","DR-ER",`right of ${fmt(cur.v)} is NULL → yes`,`Attach ${fmt(k)} as the right child of ${fmt(cur.v)}. Stop.`,{newNode:node,done:1});return S}
+     add("MR","DR-MR",`right = ${fmt(cur.r.v)} → no`,`It is taken (${fmt(cur.r.v)}), so move down to it.`);cur=cur.r;via="MR-D2"}
+    it++;vl=`cur = ${fmt(cur.v)} · loop ${it}`;
+   }}},
+ level:{W:640,H:440,code:["Q = [root]","WHILE Q is not empty","    cur = DEQUEUE(Q);  VISIT(cur)","    IF cur.left != NULL THEN ENQUEUE(Q, cur.left)","    IF cur.right != NULL THEN ENQUEUE(Q, cur.right)","STOP: every node visited"],
+  nodes:{S:{t:"term",x:300,y:28,text:"Start: Q = [root]",line:0},D1:{t:"dec",x:300,y:100,text:"Q empty ?",line:1},E:{t:"term",x:530,y:100,text:"all visited · stop",line:5},
+   P1:{t:"proc",x:300,y:180,w:240,text:"cur = DEQUEUE(Q); visit",line:2},D2:{t:"dec",x:300,y:260,text:"cur.left ≠ NULL ?",line:3},P2:{t:"proc",x:520,y:260,w:180,text:"ENQUEUE(cur.left)",line:3},
+   D3:{t:"dec",x:300,y:350,text:"cur.right ≠ NULL ?",line:4},P3:{t:"proc",x:520,y:350,w:180,text:"ENQUEUE(cur.right)",line:4}},
+  edges:{"S-D1":{pts:[[300,45],[300,70]]},"D1-E":{pts:[[395,100],[435,100]],yes:1},"D1-P1":{pts:[[300,130],[300,163]],no:1},
+   "P1-D2":{pts:[[300,197],[300,230]]},"D2-P2":{pts:[[395,260],[430,260]],yes:1},"D2-D3":{pts:[[300,290],[300,320]],no:1},
+   "P2-D3":{pts:[[520,277],[520,305],[300,305],[300,320]]},"D3-P3":{pts:[[395,350],[430,350]],yes:1},
+   "P3-D1":{pts:[[520,367],[520,415],[30,415],[30,100],[205,100]],loop:1,lp:[275,415]},
+   "D3-D1":{pts:[[300,380],[300,415],[30,415],[30,100],[205,100]],loop:1,lp:[30,260],la:1}},
+  run(t,k){const S=[];let it=1,cur=null;const Q=t?[t]:[],visited=[];
+   const qs=()=>"["+Q.map(n=>fmt(n.v)).join(", ")+"]";
+   const add=(n,via,lab,note,extra)=>S.push(Object.assign({n,via,lab,it,cur,tree:t,path:[],visited:visited.slice(),Q:Q.slice(),note},extra||{}));
+   add("S",null,null,`Put the root in the queue: Q = ${qs()}.`);
+   let via="S-D1",vl=null;
+   for(;;){
+    add("D1",via,vl,`Is the queue empty? Q = ${qs()}.`);
+    if(!Q.length){add("E","D1-E","Q = [] → yes",`Queue empty: all ${visited.length} nodes visited. Stop.`);return S}
+    const lab1=`Q = ${qs()} → no`;cur=Q.shift();visited.push(cur);
+    add("P1","D1-P1",lab1,`Take ${fmt(cur.v)} from the front and visit it (visit #${visited.length}).`);
+    add("D2","P1-D2",null,`Does ${fmt(cur.v)} have a left child?`);
+    let into;
+    if(cur.l){Q.push(cur.l);add("P2","D2-P2",`left = ${fmt(cur.l.v)} → yes`,`Add ${fmt(cur.l.v)} to the back: Q = ${qs()}.`);into="P2-D3"}else{into="D2-D3"}
+    add("D3",into,into==="D2-D3"?"left = NULL → no":`Q = ${qs()}`,`Does ${fmt(cur.v)} have a right child?`);
+    if(cur.r){Q.push(cur.r);add("P3","D3-P3",`right = ${fmt(cur.r.v)} → yes`,`Add ${fmt(cur.r.v)} to the back: Q = ${qs()}.`);via="P3-D1"}else{via="D3-D1"}
+    it++;vl=(via==="D3-D1"?"right = NULL → no · ":"")+`loop ${it}`;
+   }}}
+};
+let cvOp="insert",cvSteps=[],cvI=0,cvTimer=null,cvTree=perfect(3);
+function cvSource(){return document.getElementById("cvsrc").value==="pg"?P:cvTree}
+function cvRun(){
+ stopPlay();const k=parseFloat(document.getElementById("cvk").value);
+ if(cvOp!=="level"&&isNaN(k)){document.getElementById("cvnote").textContent="Type a number first.";return}
+ cvSteps=FC[cvOp].run(cvSource(),k);cvI=0;
+ const sl=document.getElementById("cvs");sl.max=cvSteps.length;sl.value=1;cvShow();
+}
+function stopPlay(){if(cvTimer){clearInterval(cvTimer);cvTimer=null;document.getElementById("cvplay").textContent="▶▶ Play"}}
+function cvShow(){
+ const F=FC[cvOp],st=cvSteps[cvI];if(!st)return;
+ document.getElementById("cvs").value=cvI+1;document.getElementById("cvsv").textContent=`${cvI+1} / ${cvSteps.length}`;
+ /* code */
+ const done=new Set(cvSteps.slice(0,cvI).map(s=>F.nodes[s.n].line)),curLine=F.nodes[st.n].line;
+ document.getElementById("cvcode").innerHTML=F.code.map((l,i)=>`<div class="cl${i===curLine?" now":done.has(i)?" ran":""}"><span>${i+1}</span><code>${l.replace(/</g,"&lt;")}</code></div>`).join("");
+ /* vars */
+ const c=st.cur,V=[["key",cvOp==="level"?"—":fmt(parseFloat(document.getElementById("cvk").value))],["cur",c?fmt(c.v):"NULL"],
+  ["cur.left",c?(c.l?fmt(c.l.v):"NULL"):"—"],["cur.right",c?(c.r?fmt(c.r.v):"NULL"):"—"],["loop",st.it],["condition",st.lab||"—"]];
+ if(cvOp==="level")V.splice(1,0,["Q","["+st.Q.map(n=>fmt(n.v)).join(", ")+"]"]);
+ document.getElementById("cvvars").innerHTML=V.map(([a,b])=>`<div class="stat"><span>${a}</span><b>${b}</b></div>`).join("");
+ document.getElementById("cvnote").textContent=`Step ${cvI+1}: ${st.note}`;
+ /* flowchart */
+ const svg=document.getElementById("cvfc");svg.innerHTML="";svg.setAttribute("viewBox",`0 0 ${F.W} ${F.H}`);svg.setAttribute("width",F.W*1.12);svg.setAttribute("height",F.H*1.12);
+ const defs=el("defs",{},svg);[["fa","var(--edge)"],["fh","var(--warm)"]].forEach(([id,c])=>{const m=el("marker",{id,viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto"},defs);el("path",{d:"M0,0L10,5L0,10z",style:"fill:"+c},m)});
+ const taken=new Map(),past=new Set(),visN=new Set();
+ cvSteps.slice(0,cvI+1).forEach(s=>{if(!s.via)return;if(s.it===st.it){taken.set(s.via,s.lab);visN.add(s.n)}else past.add(s.via)});
+ const g1=el("g",{},svg),g2=el("g",{},svg),g3=el("g",{},svg),g4=el("g",{},svg);
+ Object.entries(F.edges).forEach(([id,e])=>{const hot=taken.has(id),ps=!hot&&past.has(id);
+  el("polyline",{points:e.pts.map(p=>p.join(",")).join(" "),class:"fe"+(hot?" hot":ps?" past":""),"marker-end":`url(#${hot?"fh":"fa"})`},hot?g2:g1);
+  if(e.yes||e.no){const [x,y]=e.pts[0],[x2,y2]=e.pts[1];const lx=x+(x2>x?14:x2<x?-14:12),ly=y+(y2>y?16:-6);
+   el("text",{x:lx,y:ly,class:"fyn","text-anchor":x2<x?"end":"start"},g1).textContent=e.yes?"yes":"no"}
+  if(hot&&taken.get(id)){const lab=taken.get(id);let [lx,ly]=e.lp||(()=>{const a=e.pts[0],b=e.pts[e.pts.length-1];return[(a[0]+b[0])/2,(a[1]+b[1])/2]})();
+   if(!e.lp&&e.pts.length===2&&e.pts[0][1]===e.pts[1][1])ly-=12; if(!e.lp&&e.pts.length===2&&e.pts[0][0]===e.pts[1][0])lx+=8;
+   const w=lab.length*6.4+14,vertical=!e.lp&&e.pts.length===2&&e.pts[0][0]===e.pts[1][0];
+   const bx=(vertical||e.la)?lx+(e.la?6:0):lx-w/2;
+   const lg=el("g",{},g4);el("rect",{x:bx,y:ly-10,width:w,height:19,rx:5,class:"flab"},lg);el("text",{x:bx+w/2,y:ly,class:"flabt"},lg).textContent=lab}});
+ Object.entries(F.nodes).forEach(([id,n])=>{const w=n.w||(n.t==="dec"?190:n.t==="term"?190:170),cls="fn "+n.t+(id===st.n?" cur":visN.has(id)?" vis":"");
+  const g=el("g",{class:cls,transform:`translate(${n.x},${n.y})`},g3);
+  if(n.t==="dec")el("polygon",{points:`${-w/2},0 0,-30 ${w/2},0 0,30`},g);
+  else el("rect",{x:-w/2,y:-17,width:w,height:34,rx:n.t==="term"?17:4},g);
+  el("text",{},g).textContent=n.text});
+ /* tree */
+ const ps=new Set(st.path),vis=st.visited||[];
+ let unhook=null;const last=cvSteps[cvSteps.length-1];
+ if(cvOp==="insert"&&!st.done&&last.newNode){(function f(n){if(!n)return;if(n.l===last.newNode){unhook=()=>{n.l=last.newNode};n.l=null}else if(n.r===last.newNode){unhook=()=>{n.r=last.newNode};n.r=null}else{f(n.l);f(n.r)}})(st.tree)}
+ draw(document.getElementById("cvtree"),st.tree,{dx:46,minW:600,leaves:true,hot:ps,
+  cls:n=>n===st.newNode?"new":n===st.cur&&!st.done?"cur":ps.has(n)||vis.includes(n)?"vis":"",
+  badge:n=>vis.includes(n)?vis.indexOf(n)+1:(ps.has(n)&&cvOp!=="level"?st.path.indexOf(n)+1:null)});
+ if(unhook)unhook();
+ document.getElementById("cvkeep").style.display=(cvOp==="insert"&&st.done&&cvI===cvSteps.length-1)?"inline-block":"none";
+ /* trace */
+ document.getElementById("cvtrace").innerHTML=cvSteps.slice(0,cvI+1).map((s,i)=>`<tr${i===cvI?' class="now"':""}><td class="num">${i+1}</td><td>${s.it}</td><td>${F.nodes[s.n].text}</td><td class="mono">${s.lab||"—"}</td><td>${s.note}</td></tr>`).reverse().join("");
+}
+document.querySelectorAll("#v-code [data-op]").forEach(b=>b.onclick=()=>{cvOp=b.dataset.op;
+ document.querySelectorAll("#v-code [data-op]").forEach(x=>x.classList.toggle("on",x===b));
+ document.getElementById("cvkrow").style.display=cvOp==="level"?"none":"flex";
+ if(cvOp==="search")document.getElementById("cvk").value="0.909";if(cvOp==="insert")document.getElementById("cvk").value="0.95";cvRun()});
+document.getElementById("cvgo").onclick=cvRun;document.getElementById("cvk").onkeydown=e=>{if(e.key==="Enter")cvRun()};
+document.getElementById("cvsrc").onchange=cvRun;
+document.getElementById("cvprev").onclick=()=>{stopPlay();if(cvI>0){cvI--;cvShow()}};
+document.getElementById("cvnext").onclick=()=>{stopPlay();if(cvI<cvSteps.length-1){cvI++;cvShow()}};
+document.getElementById("cvs").oninput=e=>{stopPlay();cvI=+e.target.value-1;cvShow()};
+document.getElementById("cvplay").onclick=()=>{if(cvTimer){stopPlay();return}
+ if(cvI>=cvSteps.length-1)cvI=-1;document.getElementById("cvplay").textContent="❚❚ Pause";
+ cvTimer=setInterval(()=>{if(cvI>=cvSteps.length-1){stopPlay();return}cvI++;cvShow()},900)};
+document.getElementById("cvkeep").onclick=()=>{const st=cvSteps[cvSteps.length-1];
+ if(document.getElementById("cvsrc").value==="pg"){hist.push(clone(P));P=st.tree;pg()}else cvTree=st.tree;
+ cvRun();document.getElementById("cvnote").textContent="Kept: the tree now includes "+fmt(st.newNode.v)+". Step through another insert, or switch to Search.";};
+cvRun();
+
+/* routing */
+const VIEWS=["start","kernel","step-1","step-2","step-3","step-4","step-5","code","playground"];
+function route(){let v=location.hash.slice(1);if(!VIEWS.includes(v))v="start";
+ document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+ document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===v));window.scrollTo(0,0)}
+window.addEventListener("hashchange",route);
+renderQs();refresh();route();
+})();
+</script>
+</body>
+</html>
